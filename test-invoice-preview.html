@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Invoice</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans Devanagari', sans-serif;
+            padding: 40px;
+            color: #1a1a1a;
+        }
+
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 2px solid #2563eb;
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+
+        .company-details {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .invoice-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 20px 0;
+            color: #2563eb;
+        }
+
+        .invoice-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .info-block {
+            flex: 1;
+        }
+
+        .info-block h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2563eb;
+        }
+
+        .info-block p {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .items-table th {
+            background-color: #2563eb;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .items-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 11px;
+        }
+
+        .items-table tr:last-child td {
+            border-bottom: 2px solid #2563eb;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .totals-section {
+            margin-top: 20px;
+            float: right;
+            width: 300px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .total-row.highlight {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .total-row.grand-total {
+            background-color: #2563eb;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            margin-top: 5px;
+        }
+
+        .amount-words {
+            clear: both;
+            margin-top: 80px;
+            padding: 15px;
+            background-color: #f9fafb;
+            border-left: 4px solid #2563eb;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: right;
+        }
+
+        .signature-line {
+            margin-top: 60px;
+            border-top: 2px solid #1a1a1a;
+            width: 200px;
+            display: inline-block;
+        }
+
+        .signature-text {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tax-type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background-color: #10b981;
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="company-name">ABC Manufacturing Pvt Ltd</div>
+            <div class="company-details">
+                Plot 45, MIDC, Pune 411001<br>
+                GSTIN: 27AABCU9603R1ZM
+            </div>
+        </div>
+
+        <!-- Invoice Title -->
+        <div class="invoice-title">
+            TAX INVOICE
+            <span class="tax-type-badge">INTRASTATE</span>
+        </div>
+
+        <!-- Invoice Info -->
+        <div class="invoice-info">
+            <div class="info-block">
+                <h3>Invoice Details</h3>
+                <p>
+                    <strong>Invoice No:</strong> INV-20260214-981<br>
+                    <strong>Date:</strong> 14/02/2026
+                </p>
+            </div>
+            <div class="info-block">
+                <h3>Bill To</h3>
+                <p>
+                    <strong>Ravi Transport</strong><br>
+                    Maharashtra
+                </p>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 30%;">Item Description</th>
+                    <th style="width: 12%;">HSN Code</th>
+                    <th style="width: 10%;" class="text-center">Qty</th>
+                    <th style="width: 10%;" class="text-right">Rate</th>
+                    <th style="width: 8%;" class="text-center">GST%</th>
+                    <th style="width: 12%;" class="text-right">Amount</th>
+                    <th style="width: 13%;" class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+    <tr>
+      <td>1</td>
+      <td>Plastic Chairs (कुर्सी)</td>
+      <td class="text-center">94036090</td>
+      <td class="text-center">100 pcs</td>
+      <td class="text-right">₹500.00</td>
+      <td class="text-center">18%</td>
+      <td class="text-right">₹50,000.00</td>
+      <td class="text-right">₹59,000.00</td>
+    </tr>
+  
+    <tr>
+      <td>2</td>
+      <td>LED Bulbs</td>
+      <td class="text-center">85395000</td>
+      <td class="text-center">50 pcs</td>
+      <td class="text-right">₹150.00</td>
+      <td class="text-center">18%</td>
+      <td class="text-right">₹7,500.00</td>
+      <td class="text-right">₹8,850.00</td>
+    </tr>
+  
+            </tbody>
+        </table>
+
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>₹57,500.00</span>
+            </div>
+            
+      <div class="total-row">
+        <span>CGST:</span>
+        <span>₹5,175.00</span>
+      </div>
+      <div class="total-row">
+        <span>SGST:</span>
+        <span>₹5,175.00</span>
+      </div>
+    
+            <div class="total-row grand-total">
+                <span>Grand Total:</span>
+                <span>₹67,850.00</span>
+            </div>
+        </div>
+
+        <!-- Amount in Words -->
+        <div class="amount-words">
+            Amount in Words: Sixty Seven Rupees Only Thousand Eight Hundred Fifty Rupees Only
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
+                Terms & Conditions: Payment due within 30 days
+            </p>
+            <div class="signature-line"></div>
+            <div class="signature-text">Authorized Signatory</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,10 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+/**
+ * SnapBooks Landing Page - Revolutionary Weighbridge Automation
+ * Immersive, industry-specific landing experience
+ */
+
 export default function LandingPage() {
   const [activeScenario, setActiveScenario] = useState(0);
   const [liveStats, setLiveStats] = useState({ slips: 1247, weight: 42830, revenue: 12.4 });
 
+  // Simulate live counter
   useEffect(() => {
     const interval = setInterval(() => {
       setLiveStats(prev => ({
@@ -96,7 +102,7 @@ export default function LandingPage() {
                 </h1>
                 <p className="text-xl text-[#86868B] leading-relaxed max-w-xl">
                   Stop wasting 5 hours daily on manual data entry. 
-                  Our Gemini-powered AI reads handwritten <span className="text-white font-semibold">&quot;Kata Parchi&quot;</span> in seconds, 
+                  Our Gemini-powered AI reads handwritten <span className="text-white font-semibold">"Kata Parchi"</span> in seconds, 
                   not minutes.
                 </p>
               </div>
@@ -213,6 +219,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      </section>
+
       {/* Real-World Scenarios */}
       <section className="px-6 py-24 bg-gradient-to-b from-black via-[#0A0A0A] to-black">
         <div className="max-w-7xl mx-auto">
@@ -270,7 +278,7 @@ export default function LandingPage() {
               </h2>
 
               <p className="text-xl text-[#86868B] leading-relaxed">
-                We don&apos;t just scan text. Our AI understands weighbridge context—differentiating between 
+                We don't just scan text. Our AI understands weighbridge context—differentiating between 
                 gross weight, tare weight, vehicle numbers, and material names even in messy handwriting.
               </p>
 
@@ -279,7 +287,7 @@ export default function LandingPage() {
                   <div className="text-2xl">🧠</div>
                   <div>
                     <div className="font-semibold mb-1">Contextual Understanding</div>
-                    <div className="text-sm text-[#86868B]">Knows &quot;GR.WT&quot; means Gross Weight, &quot;RJ36&quot; is a vehicle number</div>
+                    <div className="text-sm text-[#86868B]">Knows "GR.WT" means Gross Weight, "RJ36" is a vehicle number</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-4 p-4 glass-panel bg-[#1C1C1E]/40 rounded-xl">
@@ -372,7 +380,7 @@ export default function LandingPage() {
             <div className="glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] rounded-2xl border-2 border-[#38383A] hover:border-[#0A84FF] transition-all group">
               <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">🚛</div>
               <h3 className="text-xl font-bold mb-3">Vehicle Memory</h3>
-              <p className="text-sm text-[#86868B]">Remembers RJ36 GA 8613 belongs to &quot;Sharma Transport&quot;. Auto-fills next time.</p>
+              <p className="text-sm text-[#86868B]">Remembers RJ36 GA 8613 belongs to "Sharma Transport". Auto-fills next time.</p>
             </div>
 
             <div className="glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] rounded-2xl border-2 border-[#38383A] hover:border-[#30D158] transition-all group">
@@ -390,7 +398,7 @@ export default function LandingPage() {
             <div className="glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] rounded-2xl border-2 border-[#38383A] hover:border-[#5E5CE6] transition-all group">
               <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">🇮🇳</div>
               <h3 className="text-xl font-bold mb-3">Hindi + English</h3>
-              <p className="text-sm text-[#86868B]">Reads &quot;पत्थर&quot; (Stone), &quot;ट्रक नंबर&quot; mixed with English seamlessly.</p>
+              <p className="text-sm text-[#86868B]">Reads "पत्थर" (Stone), "ट्रक नंबर" mixed with English seamlessly.</p>
             </div>
           </div>
         </div>
@@ -464,6 +472,16 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <style jsx>{`
+        @keyframes scan {
+          0%, 100% { transform: translateY(0); opacity: 0; }
+          50% { transform: translateY(400px); opacity: 1; }
+        }
+        .animate-scan {
+          animation: scan 3s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -2,114 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
-/* Glassmorphism Dark Theme Base Styles */
+/* Apple Pro Dark Theme */
 @layer base {
-  * {
-    @apply border-border;
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #1C1C1E;
+    --text-primary: #F5F5F7;
+    --text-secondary: #86868B;
+    --accent-blue: #0A84FF;
+    --border-color: #38383A;
   }
 
   html {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background text-foreground;
-    background-image: radial-gradient(circle at 20% 50%, rgba(0, 113, 227, 0.1) 0%, transparent 50%),
-                      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-    background-attachment: fixed;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
   }
 
-  /* Hindi Font Support */
-  .hindi-text {
-    font-family: 'Noto Sans Devanagari', sans-serif;
-  }
-
-  /* Headings */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading font-bold tracking-tight;
+    @apply tracking-tight font-semibold;
+    color: var(--text-primary);
   }
 }
 
-/* Glassmorphic Components */
 @layer components {
-  /* Glass Card */
+  /* Pro Card */
   .glass-card {
-    @apply rounded-3xl border border-white/10 bg-black/60 backdrop-blur-2xl shadow-2xl;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 32px;
+    transition: transform 0.3s ease;
+  }
+  
+  .glass-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-blue);
   }
 
-  /* Glass Panel */
+  /* Pro Panel */
   .glass-panel {
-    @apply rounded-xl border border-white/5 bg-white/5 backdrop-blur-xl transition-all duration-300;
-    @apply hover:bg-white/10 hover:scale-[1.02];
+    background-color: rgba(28, 28, 30, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
   }
 
-  /* Glass Button Primary */
-  .btn-glass-primary {
-    @apply rounded-full bg-primary/20 px-6 py-3 font-medium text-primary;
-    @apply border border-primary/30 backdrop-blur-xl transition-all duration-200;
-    @apply hover:bg-primary/30 hover:scale-105 active:scale-95;
+  /* Primary Button - Apple Style */
+  .btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+    border-radius: 980px; /* Pillow shape */
+    padding: 12px 24px;
+    font-size: 17px;
+    font-weight: 500;
+    transition: all 0.2s ease;
   }
 
-  /* Glass Button Secondary */
+  .btn-primary:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+
+  /* Secondary Button */
   .btn-glass {
-    @apply rounded-full bg-white/10 px-6 py-3 font-medium text-foreground;
-    @apply border border-white/10 backdrop-blur-xl transition-all duration-200;
-    @apply hover:bg-white/20 hover:scale-105 active:scale-95;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-radius: 980px;
+    padding: 12px 24px;
+    font-size: 17px;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
   }
 
-  /* Glass Input */
+  .btn-glass:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+  
+  .text-accent {
+    color: var(--accent-blue);
+  }
+
+  /* Input */
   .input-glass {
-    @apply rounded-xl border border-white/10 bg-black/20 px-4 py-3;
-    @apply backdrop-blur-xl text-foreground placeholder:text-white/40;
-    @apply focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50;
-    @apply transition-all duration-200;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    color: var(--text-primary);
+    font-size: 17px;
   }
-
-  /* Status Pills */
-  .pill-success {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-    @apply bg-success/20 text-success border border-success/30;
-  }
-
-  .pill-warning {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-    @apply bg-warning/20 text-warning border border-warning/30;
-  }
-
-  .pill-error {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-    @apply bg-error/20 text-error border border-error/30;
-  }
-
-  /* Uppercase Labels */
-  .label-text {
-    @apply uppercase tracking-widest text-[10px] font-semibold text-white/60;
+  
+  .input-glass:focus {
+    outline: none;
+    border-color: var(--accent-blue);
   }
 }
 
-/* Loading Animations */
 @layer utilities {
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
+  /* Scan animation for landing page */
+  @keyframes scan {
+    0%, 100% { 
+      transform: translateY(0); 
+      opacity: 0; 
     }
-    100% {
-      background-position: 1000px 0;
+    50% { 
+      transform: translateY(400px); 
+      opacity: 1; 
     }
   }
-
-  .animate-shimmer {
-    animation: shimmer 2s infinite;
-    background: linear-gradient(
-      to right,
-      #f3f4f6 0%,
-      #e5e7eb 50%,
-      #f3f4f6 100%
-    );
-    background-size: 1000px 100%;
+  
+  .animate-scan {
+    animation: scan 3s ease-in-out infinite;
   }
 }

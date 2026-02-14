@@ -1,404 +1,613 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   ProcessingMessage,
   ConfirmationMessage,
   SuccessMessage,
+  type WeighbridgeData
 } from '@/components/telegram/MessageCard';
 
 /**
- * SnapBooks Demo Page - Glassmorphic Dark Theme
- * Apple-inspired invoice generation system
+ * SnapBooks Demo - Telegram Bot Simulation
+ * Interactive demo showing the complete bot flow for Weighbridge Slips
  */
 
-export default function DemoPage() {
-  const [activeTab, setActiveTab] = useState<'telegram' | 'invoice'>('telegram');
-  const [messageState, setMessageState] = useState<'processing' | 'confirmation' | 'success'>('confirmation');
+type DemoView = 'companies' | 'bot-simulation';
 
-  // Sample invoice data for Telegram messages
-  const sampleInvoiceData = {
-    customerName: 'Skyline Retail Private Limited',
-    items: [
-      { name: 'Plastic Chair (Premium) प्लास्टिक कुर्सी', quantity: 100, rate: 450 },
-      { name: 'LED Bulb 9W एलईडी बल्ब', quantity: 200, rate: 120 },
-    ],
-    total: 69300, // Including GST
-    date: '14-Feb-26',
+interface Invoice {
+  id: string;
+  invoiceNo: string;
+  date: string;
+  vehicleNo: string;
+  material: string;
+  netWeight: number;
+  amount: number;
+  status: 'paid' | 'pending' | 'overdue';
+}
+
+interface Company {
+  id: string;
+  name: string;
+  gstin: string;
+  location: string;
+  totalInvoices: number;
+  totalRevenue: number;
+  invoices: Invoice[];
+}
+
+export default function DemoPage() {
+  const [view, setView] = useState<DemoView>('companies');
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [step, setStep] = useState<'upload' | 'processing' | 'confirmation' | 'success'>('upload');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+
+  // Sample companies data
+  const companies: Company[] = [
+    {
+      id: 'c1',
+      name: 'Rajasthan Minerals Ltd.',
+      gstin: '08AABCR1234N1Z5',
+      location: 'Jaipur, Rajasthan',
+      totalInvoices: 12,
+      totalRevenue: 245000,
+      invoices: [
+        { id: 'inv1', invoiceNo: 'INV-2024-001', date: '2024-02-14', vehicleNo: 'RJ36 GA 8613', material: 'Limestone', netWeight: 28300, amount: 42450, status: 'paid' },
+        { id: 'inv2', invoiceNo: 'INV-2024-002', date: '2024-02-14', vehicleNo: 'RJ14 KC 9021', material: 'Dolomite', netWeight: 31200, amount: 46800, status: 'paid' },
+        { id: 'inv3', invoiceNo: 'INV-2024-003', date: '2024-02-13', vehicleNo: 'RJ19 GB 4521', material: 'Limestone', netWeight: 25600, amount: 38400, status: 'pending' },
+        { id: 'inv4', invoiceNo: 'INV-2024-004', date: '2024-02-13', vehicleNo: 'RJ36 DA 7732', material: 'Marble Blocks', netWeight: 29100, amount: 58200, status: 'paid' },
+      ]
+    },
+    {
+      id: 'c2',
+      name: 'Shree Ganesh Transport Co.',
+      gstin: '24AAHCS2781A1Z3',
+      location: 'Udaipur, Rajasthan',
+      totalInvoices: 8,
+      totalRevenue: 186500,
+      invoices: [
+        { id: 'inv5', invoiceNo: 'INV-2024-005', date: '2024-02-14', vehicleNo: 'RJ20 MN 1234', material: 'Iron Ore', netWeight: 35400, amount: 70800, status: 'paid' },
+        { id: 'inv6', invoiceNo: 'INV-2024-006', date: '2024-02-13', vehicleNo: 'RJ18 PQ 5678', material: 'Coal', netWeight: 28900, amount: 43350, status: 'pending' },
+        { id: 'inv7', invoiceNo: 'INV-2024-007', date: '2024-02-12', vehicleNo: 'MP09 HG 4455', material: 'Limestone', netWeight: 26700, amount: 40050, status: 'overdue' },
+      ]
+    },
+    {
+      id: 'c3',
+      name: 'Aravalli Stone Quarry',
+      gstin: '08AAICA3456P1ZA',
+      location: 'Alwar, Rajasthan',
+      totalInvoices: 15,
+      totalRevenue: 312000,
+      invoices: [
+        { id: 'inv8', invoiceNo: 'INV-2024-008', date: '2024-02-14', vehicleNo: 'RJ27 XY 9988', material: 'Granite', netWeight: 32100, amount: 64200, status: 'paid' },
+        { id: 'inv9', invoiceNo: 'INV-2024-009', date: '2024-02-14', vehicleNo: 'RJ31 AB 3344', material: 'Sandstone', netWeight: 27800, amount: 41700, status: 'paid' },
+        { id: 'inv10', invoiceNo: 'INV-2024-010', date: '2024-02-13', vehicleNo: 'RJ14 CD 7788', material: 'Marble', netWeight: 30500, amount: 61000, status: 'pending' },
+        { id: 'inv11', invoiceNo: 'INV-2024-011', date: '2024-02-13', vehicleNo: 'HR55 EF 2233', material: 'Limestone', netWeight: 28400, amount: 42600, status: 'paid' },
+        { id: 'inv12', invoiceNo: 'INV-2024-012', date: '2024-02-12', vehicleNo: 'RJ36 GH 5566', material: 'Granite', netWeight: 33700, amount: 67400, status: 'paid' },
+      ]
+    },
+  ];
+
+  // Sample weighbridge data
+  const extractedData: WeighbridgeData = {
+    vehicleNo: 'RJ36 GA 8613',
+    materialName: 'Limestone Block',
+    grossWeight: 42500,
+    tareWeight: 14200,
+    netWeight: 28300,
+    charge: 1500
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+        setStep('processing');
+
+        // Simulate AI processing
+        setTimeout(() => {
+          setStep('confirmation');
+        }, 2500);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleConfirm = () => {
-    setMessageState('processing');
+    setStep('processing');
     setTimeout(() => {
-      setMessageState('success');
+      setStep('success');
     }, 2000);
   };
 
   const handleEdit = () => {
-    alert('Edit functionality would open a form to modify invoice details');
+    alert('In the real bot, this would open an edit form to modify the extracted data');
   };
 
-  const handleGeneratePDF = () => {
-    alert('PDF generation will be implemented with Puppeteer API');
+  const handleReset = () => {
+    setStep('upload');
+    setUploadedImage(null);
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Glassmorphic Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-black/60 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#0A84FF] selection:text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-black/60 border-b border-[#38383A]">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-heading font-black tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="text-2xl">⚖️</div>
+              <h1 className="text-lg font-semibold tracking-tight text-white">
                 SnapBooks
               </h1>
-              <p className="text-sm text-foreground/60 mt-2 font-medium">
-                Telegram Bot Invoice Generator for Indian SMBs
-              </p>
+            </Link>
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#30D158] bg-[#30D158]/10 px-2 py-1 rounded">Interactive Demo</span>
+              {view === 'bot-simulation' && (
+                <button onClick={handleReset} className="text-sm text-[#86868B] hover:text-white transition-colors">
+                  Reset
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              <span className="pill-success">
-                Live Demo
-              </span>
-            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2 mt-4 border-b border-[#38383A]">
+            <button
+              onClick={() => setView('companies')}
+              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors relative ${
+                view === 'companies'
+                  ? 'text-[#0A84FF]'
+                  : 'text-[#86868B] hover:text-white'
+              }`}
+            >
+              Companies & Invoices
+              {view === 'companies' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0A84FF]"></div>
+              )}
+            </button>
+            <button
+              onClick={() => setView('bot-simulation')}
+              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors relative ${
+                view === 'bot-simulation'
+                  ? 'text-[#0A84FF]'
+                  : 'text-[#86868B] hover:text-white'
+              }`}
+            >
+              Bot Simulation
+              {view === 'bot-simulation' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0A84FF]"></div>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* Tab Navigation */}
-        <div className="glass-card mb-8 p-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('telegram')}
-              className={`flex-1 px-6 py-4 rounded-2xl text-sm font-bold transition-all duration-300 ${
-                activeTab === 'telegram'
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-foreground/60 hover:bg-white/5'
-              }`}
-            >
-              💬 Telegram Bot Messages
-            </button>
-            <button
-              onClick={() => setActiveTab('invoice')}
-              className={`flex-1 px-6 py-4 rounded-2xl text-sm font-bold transition-all duration-300 ${
-                activeTab === 'invoice'
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-foreground/60 hover:bg-white/5'
-              }`}
-            >
-              📄 Invoice Template
-            </button>
-          </div>
-        </div>
-
-        {/* Telegram Messages Tab */}
-        {activeTab === 'telegram' && (
-          <div className="space-y-8">
-            <div className="glass-card p-8">
-              <div className="flex items-start justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-heading font-bold tracking-tight mb-2">
-                    Telegram Bot Message Flow
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    See how users interact with SnapBooks bot to generate invoices
-                  </p>
-                </div>
-              </div>
-
-              {/* Message State Selector */}
-              <div className="flex gap-3 mb-12 p-4 rounded-2xl bg-white/5 border border-white/5">
-                <button
-                  onClick={() => setMessageState('processing')}
-                  className={`flex-1 px-6 py-3 rounded-full text-sm font-bold transition-all duration-200 ${
-                    messageState === 'processing'
-                      ? 'bg-primary text-white scale-105 shadow-lg shadow-primary/50'
-                      : 'bg-white/5 text-foreground/70 hover:bg-white/10'
-                  }`}
-                >
-                  1️⃣ Processing
-                </button>
-                <button
-                  onClick={() => setMessageState('confirmation')}
-                  className={`flex-1 px-6 py-3 rounded-full text-sm font-bold transition-all duration-200 ${
-                    messageState === 'confirmation'
-                      ? 'bg-primary text-white scale-105 shadow-lg shadow-primary/50'
-                      : 'bg-white/5 text-foreground/70 hover:bg-white/10'
-                  }`}
-                >
-                  2️⃣ Confirmation
-                </button>
-                <button
-                  onClick={() => setMessageState('success')}
-                  className={`flex-1 px-6 py-3 rounded-full text-sm font-bold transition-all duration-200 ${
-                    messageState === 'success'
-                      ? 'bg-primary text-white scale-105 shadow-lg shadow-primary/50'
-                      : 'bg-white/5 text-foreground/70 hover:bg-white/10'
-                  }`}
-                >
-                  3️⃣ Success
-                </button>
-              </div>
-
-              {/* Message Display Area */}
-              <div className="flex justify-center py-16 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/5 rounded-3xl min-h-[500px] items-center border border-white/5">
-                {messageState === 'processing' && (
-                  <ProcessingMessage message="Processing your invoice... Extracting data from image" />
-                )}
-
-                {messageState === 'confirmation' && (
-                  <ConfirmationMessage
-                    data={sampleInvoiceData}
-                    onConfirm={handleConfirm}
-                    onEdit={handleEdit}
-                  />
-                )}
-
-                {messageState === 'success' && (
-                  <SuccessMessage
-                    invoiceNo="INV/2026/001"
-                    pdfUrl="/sample-invoice.pdf"
-                    excelUrl="/sample-invoice.xlsx"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="glass-panel p-8 group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🤖</div>
-                <h3 className="font-heading font-bold text-lg mb-3">AI Extraction</h3>
-                <p className="text-sm text-foreground/60 leading-relaxed">
-                  Extract invoice data from photos of handwritten kata parchi or typed bills
-                </p>
-              </div>
-              <div className="glass-panel p-8 group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">📊</div>
-                <h3 className="font-heading font-bold text-lg mb-3">GST Compliant</h3>
-                <p className="text-sm text-foreground/60 leading-relaxed">
-                  Automatic CGST/SGST for intrastate, IGST for interstate transactions
-                </p>
-              </div>
-              <div className="glass-panel p-8 group">
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🇮🇳</div>
-                <h3 className="font-heading font-bold text-lg mb-3">Hindi Support</h3>
-                <p className="text-sm text-foreground/60 leading-relaxed">
-                  Bilingual invoices with Devanagari script for product names
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Invoice Template Tab */}
-        {activeTab === 'invoice' && (
-          <div className="space-y-8">
-            <div className="glass-card p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-heading font-bold tracking-tight mb-2">
-                    Invoice Template Preview
-                  </h2>
-                  <p className="text-sm text-foreground/60">
-                    Based on E-INV-576.pdf reference • A4 Print Ready
-                  </p>
-                </div>
-                <button
-                  onClick={handleGeneratePDF}
-                  className="btn-glass-primary"
-                >
-                  📄 Generate PDF
-                </button>
-              </div>
-
-              {/* Template Type Selector */}
-              <div className="flex gap-3 mb-8">
-                <button className="px-6 py-3 bg-primary/20 text-primary text-sm font-bold rounded-full border border-primary/30">
-                  Tax Invoice
-                </button>
-                <button className="px-6 py-3 bg-white/5 text-foreground/70 text-sm font-bold rounded-full border border-white/5 hover:bg-white/10">
-                  Purchase Order
-                </button>
-                <button className="px-6 py-3 bg-white/5 text-foreground/70 text-sm font-bold rounded-full border border-white/5 hover:bg-white/10">
-                  Delivery Challan
-                </button>
-              </div>
-
-              {/* Invoice Preview */}
-              <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
-                <div className="bg-white/5 px-6 py-4 border-b border-white/10 flex items-center justify-between backdrop-blur-xl">
-                  <span className="text-sm font-mono font-semibold text-foreground/80">
-                    templates/invoice.html
-                  </span>
-                  <span className="label-text">A4 • Print Ready</span>
-                </div>
-                <div className="bg-white p-12 overflow-auto" style={{ maxHeight: '700px' }}>
-                  {/* Simplified Invoice Preview */}
-                  <div className="max-w-4xl mx-auto bg-white shadow-2xl border-2 border-gray-300">
-                    <div className="p-8">
-                      <div className="flex justify-between items-start mb-6 pb-6 border-b-2 border-black">
-                        <h1 className="text-3xl font-bold">Tax Invoice</h1>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold mb-3">e-Invoice</p>
-                          <div className="w-20 h-20 bg-gray-200 border-2 border-gray-400"></div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6 mb-6">
-                        <div className="border-2 border-gray-400 p-4">
-                          <h2 className="font-bold text-base mb-3">SHREE GANESH ENTERPRISES</h2>
-                          <p className="text-xs mb-1">No. 45/2, Hosur Road, Industrial Area</p>
-                          <p className="text-xs mb-3">Bengaluru - 560068</p>
-                          <p className="text-xs mb-1"><strong>GSTIN:</strong> 29AABCS1234F1Z5</p>
-                          <p className="text-xs"><strong>State:</strong> Karnataka, Code: 29</p>
-                        </div>
-
-                        <div className="border-2 border-gray-400 p-4 text-xs space-y-1">
-                          <div><strong>Invoice No:</strong> INV/2026/001</div>
-                          <div><strong>Dated:</strong> 08-Feb-26</div>
-                          <div><strong>Payment:</strong> 30 Days</div>
-                          <div><strong>Vehicle No:</strong> KA01AB1234</div>
-                        </div>
-                      </div>
-
-                      <div className="border-2 border-gray-400 mb-6">
-                        <table className="w-full text-xs">
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th className="border border-gray-400 p-3">Sl</th>
-                              <th className="border border-gray-400 p-3 text-left">Description</th>
-                              <th className="border border-gray-400 p-3">HSN</th>
-                              <th className="border border-gray-400 p-3">Qty</th>
-                              <th className="border border-gray-400 p-3">Rate</th>
-                              <th className="border border-gray-400 p-3">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td className="border border-gray-400 p-3 text-center">1</td>
-                              <td className="border border-gray-400 p-3">
-                                Plastic Chair (Premium)<br/>
-                                <span className="hindi-text">प्लास्टिक कुर्सी</span>
-                              </td>
-                              <td className="border border-gray-400 p-3 text-center">94036090</td>
-                              <td className="border border-gray-400 p-3 text-right">100 PCS</td>
-                              <td className="border border-gray-400 p-3 text-right">450.00</td>
-                              <td className="border border-gray-400 p-3 text-right font-semibold">45,000.00</td>
-                            </tr>
-                            <tr>
-                              <td className="border border-gray-400 p-3 text-center">2</td>
-                              <td className="border border-gray-400 p-3">
-                                LED Bulb 9W<br/>
-                                <span className="hindi-text">एलईडी बल्ब</span>
-                              </td>
-                              <td className="border border-gray-400 p-3 text-center">85395000</td>
-                              <td className="border border-gray-400 p-3 text-right">200 PCS</td>
-                              <td className="border border-gray-400 p-3 text-right">120.00</td>
-                              <td className="border border-gray-400 p-3 text-right font-semibold">24,000.00</td>
-                            </tr>
-                            <tr className="bg-gray-50">
-                              <td colSpan={5} className="border border-gray-400 p-3 text-right font-bold">Subtotal:</td>
-                              <td className="border border-gray-400 p-3 text-right font-bold">₹ 69,000.00</td>
-                            </tr>
-                            <tr>
-                              <td colSpan={5} className="border border-gray-400 p-3 text-right italic text-gray-600">
-                                CGST @ 9% + SGST @ 9%
-                              </td>
-                              <td className="border border-gray-400 p-3 text-right font-semibold">₹ 12,420.00</td>
-                            </tr>
-                            <tr className="bg-gray-200">
-                              <td colSpan={5} className="border border-gray-400 p-3 text-right font-bold text-base">
-                                Grand Total:
-                              </td>
-                              <td className="border border-gray-400 p-3 text-right font-bold text-base">₹ 81,420.00</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="text-xs mb-6 border-2 border-gray-400 p-4 bg-gray-50">
-                        <strong>Amount in Words:</strong> Eighty One Thousand Four Hundred Twenty Only
-                      </div>
-
-                      <div className="text-right text-xs mt-12">
-                        <p className="font-bold">Authorised Signatory</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Template Features */}
-              <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="glass-panel p-4">
-                  <p className="text-xs font-bold text-primary mb-1">✓ A4 Size</p>
-                  <p className="text-xs text-foreground/50">210mm × 297mm</p>
-                </div>
-                <div className="glass-panel p-4">
-                  <p className="text-xs font-bold text-primary mb-1">✓ Print Ready</p>
-                  <p className="text-xs text-foreground/50">8mm margins</p>
-                </div>
-                <div className="glass-panel p-4">
-                  <p className="text-xs font-bold text-primary mb-1">✓ Hindi Fonts</p>
-                  <p className="text-xs text-foreground/50">Noto Sans Devanagari</p>
-                </div>
-                <div className="glass-panel p-4">
-                  <p className="text-xs font-bold text-primary mb-1">✓ GST Ready</p>
-                  <p className="text-xs text-foreground/50">CGST/SGST/IGST</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Sample Data Info */}
-            <div className="glass-card p-8">
-              <h3 className="font-heading font-bold text-xl mb-6 tracking-tight">Sample Data Included</h3>
-              <div className="grid md:grid-cols-3 gap-8 text-sm">
-                <div>
-                  <p className="label-text mb-3">Products</p>
-                  <ul className="text-foreground/70 space-y-2 leading-relaxed">
-                    <li>• Plastic Chairs (HSN 94036090)</li>
-                    <li>• LED Bulbs (HSN 85395000)</li>
-                    <li>• Steel Pipes (HSN 73063090)</li>
-                    <li>• Cotton Fabric (HSN 52083900)</li>
-                    <li>• Wooden Tables (HSN 94036030)</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="label-text mb-3">Customers</p>
-                  <ul className="text-foreground/70 space-y-2 leading-relaxed">
-                    <li>• Skyline Retail (Karnataka)</li>
-                    <li>• Golden Trading (Karnataka)</li>
-                    <li>• Maharashtra Suppliers (MH)</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="label-text mb-3">Invoices</p>
-                  <ul className="text-foreground/70 space-y-2 leading-relaxed">
-                    <li>• 10 sample invoices</li>
-                    <li>• Last 7 days data</li>
-                    <li>• Mix of intra & interstate</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+        {view === 'companies' ? (
+          <CompaniesView 
+            companies={companies} 
+            selectedCompany={selectedCompany}
+            setSelectedCompany={setSelectedCompany}
+          />
+        ) : (
+          <BotSimulationView
+            step={step}
+            setStep={setStep}
+            uploadedImage={uploadedImage}
+            extractedData={extractedData}
+            handleImageUpload={handleImageUpload}
+            handleConfirm={handleConfirm}
+            handleEdit={handleEdit}
+            handleReset={handleReset}
+          />
         )}
       </main>
-
-      {/* Glassmorphic Footer */}
-      <footer className="mt-24 backdrop-blur-2xl bg-black/60 border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-8 text-center">
-          <p className="text-sm text-foreground/60 font-medium">
-            SnapBooks • Invoice Generator for Indian SMBs
-          </p>
-          <p className="mt-2 text-xs text-foreground/40">
-            Built with Next.js 14, TypeScript, Tailwind CSS & Puppeteer
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
+
+// Companies View Component
+function CompaniesView({ 
+  companies, 
+  selectedCompany, 
+  setSelectedCompany 
+}: { 
+  companies: Company[]; 
+  selectedCompany: string | null;
+  setSelectedCompany: (id: string | null) => void;
+}) {
+  const company = selectedCompany ? companies.find(c => c.id === selectedCompany) : null;
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h2 className="text-4xl font-bold tracking-tight mb-4">
+          {company ? company.name : 'Company Dashboard'}
+        </h2>
+        <p className="text-[#86868B] text-lg leading-relaxed">
+          {company ? `Manage invoices for ${company.name}` : 'View all companies and their weighbridge invoices'}
+        </p>
+        {company && (
+          <button
+            onClick={() => setSelectedCompany(null)}
+            className="mt-4 text-sm text-[#0A84FF] hover:underline flex items-center gap-1"
+          >
+            ← Back to all companies
+          </button>
+        )}
+      </div>
+
+      {/* Companies Grid or Single Company View */}
+      {!company ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {companies.map((comp) => (
+            <button
+              key={comp.id}
+              onClick={() => setSelectedCompany(comp.id)}
+              className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl hover:border-[#0A84FF] transition-all text-left group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] flex items-center justify-center text-xl font-bold">
+                  {comp.name.charAt(0)}
+                </div>
+                <div className="text-xs text-[#86868B] bg-[#2C2C2E] px-2 py-1 rounded">
+                  {comp.totalInvoices} invoices
+                </div>
+              </div>
+              
+              <h3 className="font-semibold text-white text-lg mb-2 group-hover:text-[#0A84FF] transition-colors">
+                {comp.name}
+              </h3>
+              
+              <div className="space-y-1 text-sm text-[#86868B] mb-4">
+                <div className="flex items-center gap-2">
+                  <span>📍</span>
+                  <span>{comp.location}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>🔖</span>
+                  <span className="font-mono text-xs">{comp.gstin}</span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#38383A]">
+                <div className="text-2xl font-bold text-white">
+                  ₹{(comp.totalRevenue / 1000).toFixed(1)}K
+                </div>
+                <div className="text-xs text-[#86868B]">Total Revenue</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Company Stats */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
+              <div className="text-3xl font-bold text-white mb-1">
+                {company.invoices.length}
+              </div>
+              <div className="text-sm text-[#86868B]">Total Invoices</div>
+            </div>
+            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
+              <div className="text-3xl font-bold text-[#30D158] mb-1">
+                ₹{(company.invoices.reduce((sum, inv) => sum + inv.amount, 0) / 1000).toFixed(1)}K
+              </div>
+              <div className="text-sm text-[#86868B]">Total Amount</div>
+            </div>
+            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
+              <div className="text-3xl font-bold text-[#0A84FF] mb-1">
+                {company.invoices.filter(i => i.status === 'paid').length}
+              </div>
+              <div className="text-sm text-[#86868B]">Paid Invoices</div>
+            </div>
+          </div>
+
+          {/* Invoices Table */}
+          <div className="glass-panel bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#38383A]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Invoice</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Vehicle</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Material</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-[#86868B] uppercase tracking-wider">Net Weight</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-[#86868B] uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-[#86868B] uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#38383A]">
+                  {company.invoices.map((invoice) => (
+                    <tr key={invoice.id} className="hover:bg-[#2C2C2E]/30 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-white">{invoice.invoiceNo}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-[#86868B]">{invoice.date}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-mono text-white">{invoice.vehicleNo}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-[#86868B]">{invoice.material}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="text-sm text-white">{(invoice.netWeight / 1000).toFixed(1)} MT</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="text-sm font-semibold text-white">₹{invoice.amount.toLocaleString()}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          invoice.status === 'paid' 
+                            ? 'bg-[#30D158]/10 text-[#30D158]' 
+                            : invoice.status === 'pending'
+                            ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
+                            : 'bg-[#FF453A]/10 text-[#FF453A]'
+                        }`}>
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Bot Simulation View Component
+function BotSimulationView({
+  step,
+  setStep,
+  uploadedImage,
+  extractedData,
+  handleImageUpload,
+  handleConfirm,
+  handleEdit,
+  handleReset
+}: {
+  step: 'upload' | 'processing' | 'confirmation' | 'success';
+  setStep: (step: 'upload' | 'processing' | 'confirmation' | 'success') => void;
+  uploadedImage: string | null;
+  extractedData: WeighbridgeData;
+  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleConfirm: () => void;
+  handleEdit: () => void;
+  handleReset: () => void;
+}) {
+  return (
+    <div className="grid lg:grid-cols-2 gap-12">
+      {/* Left: Instructions & Info */}
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-4xl font-bold tracking-tight mb-4">
+            Bot Simulation
+          </h2>
+          <p className="text-[#86868B] text-lg leading-relaxed">
+            See how SnapBooks instantly digitizes weighbridge slips using Gemini Vision AI.
+          </p>
+        </div>
+
+            {/* Progress Steps */}
+            <div className="glass-panel p-8 bg-[#1C1C1E]/50 border border-[#38383A]">
+              <h3 className="font-semibold mb-6 text-white">Process Flow</h3>
+              <div className="space-y-6 relative">
+                 {/* Connecting Line */}
+                 <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-[#38383A] -z-10"></div>
+                 
+                <div className={`flex items-start gap-4 transition-all ${step === 'upload' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${step === 'upload' ? 'bg-[#0A84FF] border-[#0A84FF] text-white shadow-[0_0_15px_rgba(10,132,255,0.3)]' : 'bg-[#1C1C1E] border-[#38383A] text-[#86868B]'}`}>
+                    1
+                  </div>
+                  <div className="pt-2">
+                    <div className="font-medium text-white leading-none mb-1">Upload Photo</div>
+                    <div className="text-sm text-[#86868B]">Send slip image to bot</div>
+                  </div>
+                </div>
+
+                <div className={`flex items-start gap-4 transition-all ${step === 'processing' || step === 'confirmation' || step === 'success' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${step === 'processing' || step === 'confirmation' || step === 'success' ? 'bg-[#0A84FF] border-[#0A84FF] text-white' : 'bg-[#1C1C1E] border-[#38383A] text-[#86868B]'}`}>
+                    2
+                  </div>
+                  <div className="pt-2">
+                    <div className="font-medium text-white leading-none mb-1">AI Extraction</div>
+                    <div className="text-sm text-[#86868B]">Gemini reads vehicle & weight</div>
+                  </div>
+                </div>
+
+                <div className={`flex items-start gap-4 transition-all ${step === 'confirmation' || step === 'success' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${step === 'confirmation' || step === 'success' ? 'bg-[#0A84FF] border-[#0A84FF] text-white' : 'bg-[#1C1C1E] border-[#38383A] text-[#86868B]'}`}>
+                    3
+                  </div>
+                  <div className="pt-2">
+                    <div className="font-medium text-white leading-none mb-1">Confirm Data</div>
+                    <div className="text-sm text-[#86868B]">Review extracted details</div>
+                  </div>
+                </div>
+
+                <div className={`flex items-start gap-4 transition-all ${step === 'success' ? 'opacity-100' : 'opacity-40'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${step === 'success' ? 'bg-[#30D158] border-[#30D158] text-white shadow-[0_0_15px_rgba(48,209,88,0.3)]' : 'bg-[#1C1C1E] border-[#38383A] text-[#86868B]'}`}>
+                    4
+                  </div>
+                  <div className="pt-2">
+                    <div className="font-medium text-white leading-none mb-1">Get Invoice</div>
+                    <div className="text-sm text-[#86868B]">Receive PDF instantly</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Info Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A]">
+                <div className="text-3xl mb-2">⚡</div>
+                <div className="font-bold text-white mb-1">Fast</div>
+                <div className="text-xs text-[#86868B]">Under 30 seconds processing</div>
+              </div>
+              <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A]">
+                <div className="text-3xl mb-2">🎯</div>
+                <div className="font-bold text-white mb-1">Accurate</div>
+                <div className="text-xs text-[#86868B]">Powered by Gemini 2.0</div>
+              </div>
+            </div>
+
+            {/* Sample Images */}
+            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A]">
+              <h3 className="font-semibold text-white mb-4">No slip handy?</h3>
+              <p className="text-sm text-[#86868B] mb-4">
+                Use our sample weighbridge slips:
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button className="p-3 text-sm bg-[#2C2C2E] text-white rounded-lg hover:bg-[#3A3A3C] transition-colors text-left flex items-center gap-2 border border-[#38383A]">
+                  <span>📄</span> Slip 1 (Clean)
+                </button>
+                <button className="p-3 text-sm bg-[#2C2C2E] text-white rounded-lg hover:bg-[#3A3A3C] transition-colors text-left flex items-center gap-2 border border-[#38383A]">
+                  <span>📄</span> Slip 2 (Handwritten)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Telegram Simulation */}
+          <div>
+            <div className="sticky top-24">
+              {/* Telegram Phone Frame */}
+              <div className="glass-panel max-w-sm mx-auto bg-black border border-[#38383A] rounded-[40px] overflow-hidden shadow-2xl shadow-black relative">
+                {/* Notch/Status Bar Placeholder */}
+                <div className="h-7 bg-[#black] w-full flex justify-between items-center px-6 pt-2 pb-1">
+                   <div className="text-[10px] font-semibold text-white">9:41</div>
+                   <div className="flex gap-1">
+                      <div className="w-3 h-3 rounded-full bg-[#1C1C1E]"></div>
+                      <div className="w-3 h-3 rounded-full bg-[#1C1C1E]"></div>
+                   </div>
+                </div>
+
+                {/* App Header */}
+                <div className="bg-[#1C1C1E]/90 backdrop-blur-md border-b border-[#38383A] px-4 py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-gradient-to-tr from-[#0A84FF] to-[#5E5CE6] rounded-full flex items-center justify-center text-sm font-bold text-white">
+                    SB
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-[15px] text-white leading-snug">SnapBooks Bot</div>
+                    <div className="text-[11px] text-[#0A84FF]">bot</div>
+                  </div>
+                </div>
+
+                {/* Chat Area */}
+                <div className="h-[550px] bg-black p-3 space-y-4 overflow-y-auto custom-scrollbar" style={{backgroundImage: 'url("https://web.telegram.org/img/bg_0.png")', backgroundSize: 'cover', backgroundBlendMode: 'soft-light'}}>
+                  
+                  {/* Upload Step */}
+                  {step === 'upload' && (
+                    <div className="space-y-4 pt-10">
+                      {/* Bot Welcome Message */}
+                      <div className="flex gap-2 max-w-[85%]">
+                         <div className="p-3 rounded-2xl rounded-tl-none bg-[#2C2C2E] border border-[#38383A]">
+                            <p className="text-[14px] text-white leading-relaxed">
+                              👋 Hi! Send me a photo of a Weighbridge Slip or "Kata Parchi".
+                            </p>
+                         </div>
+                      </div>
+
+                      {/* Upload Area */}
+                      <div className="flex justify-end pt-8 px-4">
+                        <label className="cursor-pointer group relative">
+                          <div className="animate-pulse absolute -inset-1 bg-gradient-to-r from-[#0A84FF] to-[#0A84FF]/20 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                          <div className="relative bg-[#0A84FF] text-white px-6 py-3 rounded-full font-medium text-sm flex items-center gap-2 hover:scale-105 transition-transform">
+                             <span>📷</span> Upload Photo
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing Step */}
+                  {step === 'processing' && (
+                    <div className="space-y-4">
+                      {/* User's uploaded image */}
+                      {uploadedImage && (
+                        <div className="flex justify-end">
+                          <div className="p-1 bg-[#0A84FF] rounded-2xl rounded-tr-none max-w-[70%]">
+                             <img src={uploadedImage} alt="Uploaded bill" className="rounded-xl" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bot processing message */}
+                      <div className="flex gap-2">
+                         <ProcessingMessage message="Analyzing slip..." />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirmation Step */}
+                  {step === 'confirmation' && (
+                    <div className="space-y-4">
+                      {/* User's uploaded image */}
+                      {uploadedImage && (
+                        <div className="flex justify-end">
+                          <div className="p-1 bg-[#0A84FF] rounded-2xl rounded-tr-none max-w-[70%]">
+                             <img src={uploadedImage} alt="Uploaded bill" className="rounded-xl" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bot confirmation message */}
+                      <div className="flex gap-2">
+                         <ConfirmationMessage
+                            data={extractedData}
+                            onConfirm={handleConfirm}
+                            onEdit={handleEdit}
+                          />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success Step */}
+                  {step === 'success' && (
+                    <div className="space-y-4">
+                       <div className="flex justify-end">
+                          <div className="p-2.5 px-4 bg-[#0A84FF] text-white text-[14px] rounded-2xl rounded-tr-none">
+                             Generate Invoice
+                          </div>
+                       </div>
+                      {/* Bot success message */}
+                      <div className="flex gap-2">
+                       <SuccessMessage invoiceNo="INV-2024-001" />
+                      </div>
+                    </div>
+                  )}
+                  
+                </div>
+
+                {/* Input Area (Visual Only) */}
+                <div className="bg-[#1C1C1E] p-3 border-t border-[#38383A] flex gap-3 items-center">
+                   <div className="w-8 h-8 rounded-full bg-[#2C2C2E] flex items-center justify-center text-[#86868B]">📎</div>
+                   <div className="flex-1 bg-[#000000] rounded-full h-9 border border-[#38383A]"></div>
+                   <div className="w-9 h-9 rounded-full bg-[#0A84FF] flex items-center justify-center text-white">➤</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    

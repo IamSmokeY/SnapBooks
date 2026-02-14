@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 
-from src.firebase import get_db
 from src.logger import log
 from src.models import Contact, ToolResponse
 
@@ -9,14 +8,29 @@ class LookupContactsRequest(BaseModel):
     query: str = Field(..., description="Search query to match against contact names (partial match supported)")
     metadata: bool = Field(
         False,
-        description="If false, return only names and IDs. If true, return full details (address, GSTIN, phone, etc.)",
+        description="If false, return only names and IDs. If true, return full details (address, GSTIN, phone, etc.).",
     )
+
+
+def _get_db_or_none():
+    """Try to get Firestore client; return None if Firebase isn't configured."""
+    try:
+        from src.firebase import get_db
+        return get_db()
+    except Exception:
+        return None
 
 
 async def lookup_contacts(request: LookupContactsRequest) -> ToolResponse:
     """Search contacts by name. Set metadata=true to get full details (address, GSTIN, phone), or false for just names and IDs."""
     try:
-        db = get_db()
+        db = _get_db_or_none()
+        if db is None:
+            log("lookup_contacts_skip", reason="Firebase not configured")
+            return ToolResponse(
+                response=f"No contacts database configured. Cannot look up '{request.query}'.",
+            )
+
         docs = await db.collection("contacts").get()
 
         query_lower = request.query.lower()

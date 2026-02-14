@@ -38,7 +38,7 @@ interface Company {
 }
 
 // API Configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3004';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function DemoPage() {
   const [view, setView] = useState<DemoView>('companies');

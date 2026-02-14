@@ -1,109 +1,174 @@
-# 📱 SnapBooks
+# SnapBooks - Telegram AI Accountant
 
-**AI-Powered Invoice Generator for Indian SMBs**
+> Convert handwritten bills to GST-compliant invoices in 30 seconds
 
-SnapBooks is a modern invoice generation system designed for Indian small and medium businesses. It transforms photos of handwritten bills (kata parchi) or typed invoices into professional, GST-compliant PDF invoices through a Telegram bot interface.
+A Telegram bot that uses Gemini Vision AI to extract data from handwritten "kata parchi" (bill notes) and generates professional invoices, Tally XML, and manages inventory.
 
-## 🏗️ Project Structure
+## 🎯 Project Status
 
-```
-SnapBooks/
-├── frontend/          # Next.js 14 web application (Glassmorphic UI)
-│   ├── app/          # Next.js app directory
-│   ├── components/   # React components (Telegram UI, etc.)
-│   ├── templates/    # HTML templates for PDF generation
-│   ├── types/        # TypeScript type definitions
-│   └── data/         # Sample data for demo
-│
-└── backend/          # (Coming Soon) API & Telegram Bot
-    ├── api/          # Invoice generation endpoints
-    ├── bot/          # Telegram bot integration
-    └── ocr/          # OCR/AI extraction service
-```
+**Built for Gemini Hackathon**
 
-## ✨ Key Features
+### ✅ Completed (Hour 1)
+- [x] Telegraf.js bot scaffold
+- [x] `/start` and `/help` commands
+- [x] Photo upload handler
+- [x] Gemini Vision API client
+- [x] Image-to-JSON extraction
+- [x] Error handling with try/catch
+- [x] Confirmation flow with inline keyboards
 
-- 🤖 **AI-Powered Extraction**: Extract invoice data from photos
-- 📄 **GST Compliant**: Automatic CGST/SGST/IGST calculations
-- 🇮🇳 **Hindi Support**: Bilingual invoices with Devanagari script
-- 💬 **Telegram Bot**: Conversational invoice generation
-- 🖨️ **Print Ready**: Professional A4 PDFs with 8mm margins
-- 🎨 **Glassmorphic UI**: Apple-inspired dark theme design
+### 🚧 In Progress
+- [ ] PDF generation with Puppeteer
+- [ ] GST calculation engine
+- [ ] Tally XML builder
+- [ ] Inventory management
+- [ ] Full pipeline integration
 
 ## 🚀 Quick Start
 
-### Frontend (Next.js Web UI)
+### Prerequisites
+- Node.js 20+
+- Telegram Bot Token (from @BotFather)
+- Gemini API Key
+
+### Installation
 
 ```bash
-cd frontend
+# Install dependencies
 npm install
+
+# Configure environment variables
+# Edit .env with your tokens (already configured)
+
+# Start the bot
+npm start
+
+# Or for development with auto-reload
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to see the demo.
+### Testing the Bot
 
-### Backend (Coming Soon)
+1. Open Telegram and search for `@snapbooks_bot`
+2. Send `/start` to initialize
+3. Take a photo of a handwritten bill
+4. Send it to the bot
+5. Bot will extract data and show confirmation
 
-The backend will include:
-- Puppeteer PDF generation API
-- Telegram Bot webhook handler
-- OCR/AI extraction service
-- Invoice data management
+## 📋 Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message and quick start guide |
+| `/help` | Detailed usage instructions |
+| `/inventory` | View current stock levels (coming soon) |
+| `/ledger <name>` | Check customer outstanding (coming soon) |
+| `/analytics` | Today's sales summary (coming soon) |
+
+## 🏗️ Architecture
+
+```
+User sends photo
+    ↓
+Telegraf Bot receives image
+    ↓
+Gemini Vision API extracts data
+    ↓
+User confirms with inline keyboard
+    ↓
+Generate PDF + Tally XML
+    ↓
+Update Firestore inventory
+    ↓
+Send documents back to user
+```
 
 ## 📦 Tech Stack
 
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS (Glassmorphism theme)
-- **Fonts**: Inter, Outfit, JetBrains Mono
-- **PDF Templates**: Standalone HTML + Puppeteer
+- **Bot Framework:** Telegraf.js
+- **AI/OCR:** Gemini 2.0 Flash (Vision API)
+- **PDF Generation:** Puppeteer + HTML templates
+- **Database:** Firestore
+- **XML Builder:** xmlbuilder2
+- **Server:** Railway/Render (persistent Node.js)
 
-### Backend (Planned)
-- **Runtime**: Node.js / Bun
-- **Bot**: node-telegram-bot-api
-- **PDF**: Puppeteer
-- **OCR**: Tesseract.js / Google Vision API
-- **AI**: OpenAI GPT-4 Vision
+## 👥 Team
 
-## 🎨 Design System
+- **Chetas:** AI & Prompt Engineering + Demo Lead
+- **Bck (You):** Fullstack - Bot Core & Document Generation
+- **SmokeY JokeR:** Database & DevOps
+- **popsause:** Frontend/UI - Templates & Pitch
 
-**Glassmorphic Dark Theme**
-- Background: `#050505` with gradient overlays
-- Glass Effects: `backdrop-blur-2xl` + `bg-black/60`
-- Primary: `#0071e3` (Apple Blue)
-- Accent: `#8b5cf6` (Purple)
-- Typography: Inter + Outfit + JetBrains Mono
+## 📁 Project Structure
 
-## 📄 Documentation
+```
+snapbooks/
+├── src/
+│   ├── bot.js                 ✅ Main bot entry point
+│   ├── geminiClient.js        ✅ Gemini Vision API wrapper
+│   ├── confirmationFlow.js    🚧 Inline keyboard handling
+│   ├── pipeline.js            🚧 End-to-end orchestration
+│   ├── pdfGenerator.js        🚧 Puppeteer PDF renderer
+│   ├── gstEngine.js           🚧 Tax calculation
+│   ├── tallyXml.js            🚧 XML builder
+│   ├── inventory.js           🚧 Stock management
+│   ├── db.js                  🚧 Firestore client
+│   └── commands/
+│       ├── ledger.js          🚧 Customer ledger query
+│       └── analytics.js       🚧 Daily analytics
+├── templates/                 📄 HTML templates for PDFs
+├── data/                      📊 Seed data & HSN codes
+├── scripts/                   🔧 Utility scripts
+├── .env                       ⚙️ Configuration
+└── package.json
+```
 
-- [Frontend README](./frontend/README.md) - Detailed frontend documentation
-- [Templates Guide](./frontend/templates/) - Invoice template customization
-- [Type Definitions](./frontend/types/invoice.ts) - TypeScript interfaces
+## 🔑 Environment Variables
 
-## 🛣️ Roadmap
+See `.env` file (already configured with tokens)
 
-- [x] Frontend UI with glassmorphic theme
-- [x] Invoice HTML templates (Tax Invoice, PO, Challan)
-- [x] Sample data generation
-- [ ] Puppeteer PDF generation API
-- [ ] Telegram Bot integration
-- [ ] OCR/AI extraction service
-- [ ] User authentication
-- [ ] Invoice history & management
-- [ ] Excel export functionality
-- [ ] E-way bill generation
+## 🧪 Testing
 
-## 📜 License
+```bash
+# Test Gemini API connection
+node -e "import('./src/geminiClient.js').then(m => m.testGeminiConnection())"
 
-This project is licensed under the MIT License.
+# Start bot in development mode
+npm run dev
+```
 
-## 🙏 Credits
+## 📝 Sample Data Format
 
-- Invoice layout based on real Indian GST invoices
-- Apple Design System for UI inspiration
-- Indian GST Council for tax compliance guidelines
+**Expected Gemini Output:**
+```json
+{
+  "supplier_or_customer": "Ravi Transport",
+  "items": [
+    {
+      "name": "Plastic Chairs (कुर्सी)",
+      "quantity": 100,
+      "unit": "pcs",
+      "rate": 500,
+      "amount": 50000
+    }
+  ],
+  "date": "14/02/2026",
+  "notes": "Deliver to warehouse",
+  "confidence": 0.95
+}
+```
 
----
+## 🎯 Next Steps (Hour 2-5)
 
-**Built with ❤️ for Indian SMBs**
+1. **Hour 2:** PDF generation + GST engine + confirmation flow
+2. **Hour 3:** Tally XML + inventory + ledger/analytics commands
+3. **Hour 4:** Integration testing + bug fixes
+4. **Hour 5:** Demo polish + rehearsal
+
+## 📞 Support
+
+For issues or questions, contact the team lead.
+
+## 📄 License
+
+MIT License - Built for Gemini Hackathon 2026

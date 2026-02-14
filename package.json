@@ -1,0 +1,24 @@
+{
+  "name": "snapbooks-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram AI Accountant - Converts handwritten bills to GST invoices",
+  "main": "src/bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js",
+    "seed": "node scripts/seed.js",
+    "reset": "node scripts/reset.js"
+  },
+  "keywords": ["telegram", "bot", "gemini", "invoice", "gst", "tally"],
+  "author": "Team SnapBooks",
+  "license": "MIT",
+  "dependencies": {
+    "telegraf": "^4.15.0",
+    "@google/generative-ai": "^0.21.0",
+    "firebase-admin": "^12.0.0",
+    "puppeteer": "^22.0.0",
+    "xmlbuilder2": "^3.1.1",
+    "dotenv": "^16.4.0"
+  }
+}

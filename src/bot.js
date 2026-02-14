@@ -1,8 +1,12 @@
 import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 import { extractDataFromImage } from './geminiClient.js';
+import { processInvoicePipeline, sendResultsToTelegram } from './pipeline.js';
 
 dotenv.config();
+
+// Session storage for user data (in production, use Redis or database)
+const userSessions = new Map();
 
 // Initialize bot
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -131,27 +135,32 @@ bot.on('photo', async (ctx) => {
     // Format extracted data for user confirmation
     const confirmationMessage = formatExtractedData(extractedData);
 
+    // Store data in session for callback handler
+    const userId = ctx.from.id;
+    userSessions.set(userId, {
+      imageBuffer,
+      extractedData,
+      timestamp: Date.now()
+    });
+
     // Send confirmation with inline keyboard
     await ctx.replyWithMarkdown(confirmationMessage, {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '📄 Sales Invoice', callback_data: `confirm_sales_${Date.now()}` },
-            { text: '📦 Purchase Order', callback_data: `confirm_purchase_${Date.now()}` }
+            { text: '📄 Sales Invoice', callback_data: `confirm_sales` },
+            { text: '📦 Purchase Order', callback_data: `confirm_purchase` }
           ],
           [
-            { text: '🚚 Delivery Challan', callback_data: `confirm_challan_${Date.now()}` }
+            { text: '🚚 Delivery Challan', callback_data: `confirm_challan` }
           ],
           [
-            { text: '✏️ Edit Data', callback_data: `edit_${Date.now()}` },
-            { text: '❌ Cancel', callback_data: `cancel_${Date.now()}` }
+            { text: '✏️ Edit Data', callback_data: `edit` },
+            { text: '❌ Cancel', callback_data: `cancel` }
           ]
         ]
       }
     });
-
-    // Store extracted data in context for later use
-    // TODO: Store in session/database for callback handler access
 
   } catch (error) {
     console.error('Error in photo handler:', error);
@@ -175,36 +184,67 @@ bot.on('photo', async (ctx) => {
 bot.on('callback_query', async (ctx) => {
   try {
     const callbackData = ctx.callbackQuery.data;
+    const userId = ctx.from.id;
 
-    console.log('Callback received:', callbackData);
+    console.log('Callback received:', callbackData, 'from user:', userId);
 
-    if (callbackData.startsWith('confirm_sales_')) {
+    // Get user session data
+    const session = userSessions.get(userId);
+    if (!session) {
+      await ctx.answerCbQuery('Session expired. Please send a new photo.');
+      await ctx.reply('⏱️ Session expired. Please send a new photo to start over.');
+      return;
+    }
+
+    if (callbackData === 'confirm_sales') {
       await ctx.answerCbQuery('Creating Sales Invoice...');
-      // TODO: Pipeline to generate sales invoice
-      await ctx.reply('✅ Sales Invoice generation in progress...');
+      await ctx.reply('⚡ Generating Sales Invoice...');
 
-    } else if (callbackData.startsWith('confirm_purchase_')) {
+      // Run pipeline
+      const result = await processInvoicePipeline(session.imageBuffer, 'sales_invoice');
+      await sendResultsToTelegram(ctx, result);
+
+      // Clear session
+      userSessions.delete(userId);
+
+    } else if (callbackData === 'confirm_purchase') {
       await ctx.answerCbQuery('Creating Purchase Order...');
-      // TODO: Pipeline to generate purchase order
-      await ctx.reply('✅ Purchase Order generation in progress...');
+      await ctx.reply('⚡ Generating Purchase Order...');
 
-    } else if (callbackData.startsWith('confirm_challan_')) {
+      // Run pipeline
+      const result = await processInvoicePipeline(session.imageBuffer, 'purchase_order');
+      await sendResultsToTelegram(ctx, result);
+
+      // Clear session
+      userSessions.delete(userId);
+
+    } else if (callbackData === 'confirm_challan') {
       await ctx.answerCbQuery('Creating Delivery Challan...');
-      // TODO: Pipeline to generate delivery challan
-      await ctx.reply('✅ Delivery Challan generation in progress...');
+      await ctx.reply('⚡ Generating Delivery Challan...');
 
-    } else if (callbackData.startsWith('edit_')) {
+      // Run pipeline
+      const result = await processInvoicePipeline(session.imageBuffer, 'delivery_challan');
+      await sendResultsToTelegram(ctx, result);
+
+      // Clear session
+      userSessions.delete(userId);
+
+    } else if (callbackData === 'edit') {
       await ctx.answerCbQuery('Edit feature coming soon...');
       await ctx.reply('✏️ Edit feature will be available soon. For now, please send a clearer photo.');
 
-    } else if (callbackData.startsWith('cancel_')) {
+    } else if (callbackData === 'cancel') {
       await ctx.answerCbQuery('Cancelled');
       await ctx.reply('❌ Operation cancelled. Send a new photo when ready.');
+
+      // Clear session
+      userSessions.delete(userId);
     }
 
   } catch (error) {
     console.error('Error in callback handler:', error);
-    ctx.answerCbQuery('Error processing your request');
+    await ctx.answerCbQuery('Error processing your request');
+    await ctx.reply(`❌ Error: ${error.message}\n\nPlease try again.`);
   }
 });
 

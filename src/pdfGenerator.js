@@ -13,9 +13,15 @@ const __dirname = dirname(__filename);
 // Document type to template mapping
 const TEMPLATE_MAP = {
   'sales_invoice': 'invoice.html',
-  'purchase_order': 'invoice.html', // Using same template for MVP
-  'delivery_challan': 'invoice.html'  // Using same template for MVP
+  'purchase_order': 'purchase-order.html',
+  'delivery_challan': 'delivery-challan.html'
 };
+
+// Try frontend templates first, fallback to root templates
+const TEMPLATE_PATHS = [
+  join(__dirname, '../frontend/templates'),
+  join(__dirname, '../templates')
+];
 
 /**
  * Generate a unique invoice number
@@ -39,8 +45,22 @@ function generateInvoiceNumber(type = 'INV') {
  * @returns {string} Populated HTML
  */
 function populateTemplate(templateName, data) {
-  const templatePath = join(__dirname, '../templates', templateName);
-  let html = readFileSync(templatePath, 'utf-8');
+  // Try to load from multiple template paths
+  let html;
+  for (const basePath of TEMPLATE_PATHS) {
+    const templatePath = join(basePath, templateName);
+    try {
+      html = readFileSync(templatePath, 'utf-8');
+      console.log(`Using template: ${templatePath}`);
+      break;
+    } catch (err) {
+      continue;
+    }
+  }
+
+  if (!html) {
+    throw new Error(`Template not found: ${templateName}`);
+  }
 
   // Business details
   html = html.replace(/{{BUSINESS_NAME}}/g, process.env.BUSINESS_NAME || 'ABC Manufacturing Pvt Ltd');

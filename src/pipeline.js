@@ -9,22 +9,73 @@ import { writeFileSync } from 'fs';
  * @param {Buffer} imageBuffer - Image buffer from Telegram
  * @param {string} documentType - 'sales_invoice', 'purchase_order', 'delivery_challan'
  * @param {string} customerState - Customer's state (optional)
+ * @param {Object} options - Pipeline options
+ * @param {number} options.timeout - Overall timeout in milliseconds (default: 30000)
+ * @param {number} options.ocrTimeout - OCR timeout (default: 25000)
  * @returns {Promise<Object>} { invoice, pdfBuffer, xmlString, metadata }
  */
-export async function processInvoicePipeline(imageBuffer, documentType = 'sales_invoice', customerState = null) {
+export async function processInvoicePipeline(imageBuffer, documentType = 'sales_invoice', customerState = null, options = {}) {
+  const { timeout = 30000, ocrTimeout = 25000 } = options;
   const startTime = Date.now();
   const metadata = {
     documentType,
     startTime: new Date().toISOString(),
-    steps: []
+    steps: [],
+    timeout,
+    ocrTimeout
   };
 
   try {
+    // Wrap entire pipeline in timeout
+    return await Promise.race([
+      executePipeline(imageBuffer, documentType, customerState, metadata, { ocrTimeout }),
+      new Promise((_, reject) =>
+        setTimeout(() => {
+          const elapsed = Date.now() - startTime;
+          reject(new Error(`Pipeline timeout after ${elapsed}ms (limit: ${timeout}ms). Please try again with a clearer photo.`));
+        }, timeout)
+      )
+    ]);
+  } catch (error) {
+    console.error('❌ Pipeline error:', error);
+
+    metadata.totalDuration = Date.now() - startTime;
+    metadata.endTime = new Date().toISOString();
+    metadata.success = false;
+    metadata.error = error.message;
+
+    return {
+      success: false,
+      error: error.message,
+      metadata
+    };
+  }
+}
+
+/**
+ * Execute the pipeline steps
+ * @private
+ */
+async function executePipeline(imageBuffer, documentType, customerState, metadata, options) {
+  const { ocrTimeout } = options;
+  const startTime = Date.now();
+
+  try {
+    // Validate inputs
+    if (!imageBuffer || !Buffer.isBuffer(imageBuffer)) {
+      throw new Error('Invalid image buffer');
+    }
+    if (imageBuffer.length === 0) {
+      throw new Error('Empty image buffer');
+    }
+    if (imageBuffer.length > 10 * 1024 * 1024) { // 10MB limit
+      throw new Error('Image too large (max 10MB)');
+    }
     // Step 1: Extract data with Gemini Vision OCR
     console.log('📸 Step 1: Extracting data from image...');
     const stepStart = Date.now();
 
-    const extractedData = await extractDataFromImage(imageBuffer);
+    const extractedData = await extractDataFromImage(imageBuffer, { timeout: ocrTimeout });
 
     metadata.steps.push({
       step: 'OCR',
@@ -60,41 +111,41 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
 
     console.log('✅ Invoice validated');
 
-    // Step 4: Generate PDF
-    console.log('📑 Step 4: Generating PDF...');
-    const pdfStart = Date.now();
-
-    const pdfBuffer = await generatePDF(invoiceData, documentType);
-
-    metadata.steps.push({
-      step: 'PDF Generation',
-      duration: Date.now() - pdfStart,
-      size: pdfBuffer.length
-    });
-
-    console.log(`✅ PDF generated (${metadata.steps[2].duration}ms, ${pdfBuffer.length} bytes)`);
-
-    // Step 5: Generate Tally XML
-    console.log('📄 Step 5: Generating Tally XML...');
-    const xmlStart = Date.now();
+    // Steps 4 & 5: Generate PDF and XML in parallel for speed
+    console.log('📑 Step 4 & 5: Generating PDF and XML in parallel...');
+    const generationStart = Date.now();
 
     const voucherType = documentType === 'purchase_order' ? 'Purchase' : 'Sales';
-    const xmlString = generateTallyXML(invoiceData, voucherType);
 
-    // Validate XML
-    const xmlValidation = validateTallyXML(xmlString);
-    if (!xmlValidation.valid) {
-      console.warn('⚠️ XML validation warnings:', xmlValidation.errors);
-    }
+    // Parallelize PDF and XML generation
+    const [pdfBuffer, xmlString] = await Promise.all([
+      generatePDF(invoiceData, documentType).catch(err => {
+        console.error('PDF generation error:', err);
+        throw new Error(`PDF generation failed: ${err.message}`);
+      }),
+      (async () => {
+        const xml = generateTallyXML(invoiceData, voucherType);
+        const xmlValidation = validateTallyXML(xml);
+        if (!xmlValidation.valid) {
+          console.warn('⚠️ XML validation warnings:', xmlValidation.errors);
+        }
+        return xml;
+      })().catch(err => {
+        console.error('XML generation error:', err);
+        throw new Error(`XML generation failed: ${err.message}`);
+      })
+    ]);
+
+    const generationDuration = Date.now() - generationStart;
 
     metadata.steps.push({
-      step: 'XML Generation',
-      duration: Date.now() - xmlStart,
-      size: xmlString.length,
-      valid: xmlValidation.valid
+      step: 'PDF + XML Generation (Parallel)',
+      duration: generationDuration,
+      pdfSize: pdfBuffer.length,
+      xmlSize: xmlString.length
     });
 
-    console.log(`✅ XML generated (${metadata.steps[3].duration}ms, ${xmlString.length} bytes)`);
+    console.log(`✅ PDF + XML generated in parallel (${generationDuration}ms, PDF: ${pdfBuffer.length} bytes, XML: ${xmlString.length} bytes)`);
 
     // Complete metadata
     metadata.totalDuration = Date.now() - startTime;
@@ -102,6 +153,11 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
     metadata.success = true;
 
     console.log(`\n✨ Pipeline complete in ${metadata.totalDuration}ms`);
+
+    // Check if we're approaching timeout
+    if (metadata.totalDuration > 25000) {
+      console.warn(`⚠️ Pipeline took ${metadata.totalDuration}ms (close to 30s limit)`);
+    }
 
     return {
       success: true,
@@ -113,18 +169,20 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
     };
 
   } catch (error) {
-    console.error('❌ Pipeline error:', error);
+    // Enhanced error reporting
+    let userMessage = error.message;
 
-    metadata.totalDuration = Date.now() - startTime;
-    metadata.endTime = new Date().toISOString();
-    metadata.success = false;
-    metadata.error = error.message;
+    if (error.message.includes('timeout')) {
+      userMessage = 'Processing is taking too long. Please try again with a clearer, smaller photo.';
+    } else if (error.message.includes('confidence')) {
+      userMessage = 'Could not read the handwriting clearly. Please ensure good lighting and clear text.';
+    } else if (error.message.includes('validation')) {
+      userMessage = `Invoice validation failed: ${error.message}. Please check the bill details.`;
+    } else if (error.message.includes('API key')) {
+      userMessage = 'Service configuration error. Please contact support.';
+    }
 
-    return {
-      success: false,
-      error: error.message,
-      metadata
-    };
+    throw new Error(userMessage);
   }
 }
 

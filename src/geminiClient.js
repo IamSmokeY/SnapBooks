@@ -1,54 +1,38 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { parseGeminiResponse } from './schemaAdapter.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// System prompt for OCR data extraction
-const EXTRACTION_PROMPT = `You are an OCR system for Indian manufacturing businesses. Extract structured data from photos of handwritten "kata parchi" (bill notes).
-
-RULES:
-1. Handle Hindi, English, and mixed Hindi-English text
-2. Recognize common abbreviations: pcs (pieces), kg (kilograms), dz (dozen), ctn (carton), mtr (meter), ltr (liter)
-3. Numbers may be handwritten — interpret carefully
-4. If unsure about a value, include it but set confidence lower
-5. Always extract: customer/supplier name, items with quantities and rates
-6. Return ONLY valid JSON, no markdown, no explanation, no code blocks
-
-OUTPUT SCHEMA:
-{
-  "supplier_or_customer": "string (the person/company name on the bill)",
-  "items": [
-    {
-      "name": "string (item name, translate Hindi to English in parentheses if needed)",
-      "quantity": number,
-      "unit": "string (pcs/kg/dz/ctn/mtr/ltr)",
-      "rate": number (per unit price, 0 if not written),
-      "amount": number (total for this line, 0 if not written)
-    }
-  ],
-  "date": "string (DD/MM/YYYY if visible, otherwise null)",
-  "notes": "string (any additional text on the bill)",
-  "confidence": number (0.0 to 1.0, overall extraction confidence)
+// Load system prompt from file (our tested v2 prompt)
+let SYSTEM_PROMPT;
+try {
+  SYSTEM_PROMPT = readFileSync(join(__dirname, '../system_prompt.txt'), 'utf-8').trim();
+  console.log('✅ Loaded system prompt from system_prompt.txt');
+} catch (err) {
+  console.error('❌ Could not load system_prompt.txt, using fallback');
+  SYSTEM_PROMPT = 'Extract all structured data from this document image. Return only valid JSON.';
 }
 
-EXAMPLES OF HANDWRITTEN TEXT YOU MAY SEE:
-- "Sharma ji ko 100 kursi bhejo @ 500" → Sharma, 100 pcs chairs at ₹500
-- "50 kg sariya aayi godown mein" → 50 kg steel bars received
-- "LED bulb 200 pcs @ 150/pc" → 200 LED bulbs at ₹150 each
-- "Ravi Transport - 25 carton, rate 1200" → Ravi Transport, 25 cartons at ₹1200
-
-Extract the data from the image and return ONLY the JSON object.`;
+// Model name — configurable via env, defaults to gemini-2.5-flash
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 /**
- * Extract structured data from a handwritten bill image using Gemini Vision API
+ * Extract structured data from a business document image using Gemini Vision API
  * @param {Buffer} imageBuffer - Image buffer from Telegram
  * @param {Object} options - Options for extraction
  * @param {number} options.timeout - Timeout in milliseconds (default: 25000)
  * @param {number} options.maxRetries - Maximum retry attempts (default: 2)
- * @returns {Promise<Object>} Extracted data in structured format
+ * @returns {Promise<Object>} Parsed + flattened data ready for pipeline
  */
 export async function extractDataFromImage(imageBuffer, options = {}) {
   const { timeout = 25000, maxRetries = 2 } = options;
@@ -56,22 +40,21 @@ export async function extractDataFromImage(imageBuffer, options = {}) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Calling Gemini Vision API (attempt ${attempt}/${maxRetries})...`);
+      console.log(`Calling Gemini Vision API [${GEMINI_MODEL}] (attempt ${attempt}/${maxRetries})...`);
 
-      // Use Gemini 2.5 Flash for vision + structured output
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: GEMINI_MODEL,
+        systemInstruction: SYSTEM_PROMPT,
         generationConfig: {
-          temperature: 0.1, // Low temperature for consistent extraction
-          maxOutputTokens: 4096, // Increased for complete JSON
-          responseMimeType: "application/json", // Request JSON response
+          temperature: 0.1,
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json",
         }
       });
 
       // Convert buffer to base64
       const base64Image = imageBuffer.toString('base64');
 
-      // Create the request with image and prompt
       const imagePart = {
         inlineData: {
           data: base64Image,
@@ -81,104 +64,80 @@ export async function extractDataFromImage(imageBuffer, options = {}) {
 
       // Call API with timeout
       const result = await Promise.race([
-        model.generateContent([EXTRACTION_PROMPT, imagePart]),
+        model.generateContent(['Extract all data from this document', imagePart]),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`Gemini API timeout after ${timeout}ms`)), timeout)
         )
       ]);
 
-    const response = await result.response;
-    const text = response.text();
+      const response = await result.response;
+      const text = response.text();
 
-    console.log('Gemini raw response:', text);
+      console.log('Gemini raw response length:', text.length, 'chars');
 
-    // Parse JSON from response
-    let extractedData;
-    try {
-      // Remove markdown code blocks if present
-      let cleanedText = text.trim();
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```\n?/g, '');
-      }
-
-      // Try to fix incomplete JSON by adding missing closing brackets
-      if (!cleanedText.includes('"confidence"')) {
-        // JSON is incomplete, try to complete it
-        const itemsMatch = cleanedText.match(/"items":\s*\[/);
-        if (itemsMatch) {
-          // Count opening and closing brackets
-          const openBrackets = (cleanedText.match(/\[/g) || []).length;
-          const closeBrackets = (cleanedText.match(/\]/g) || []).length;
-          const openBraces = (cleanedText.match(/\{/g) || []).length;
-          const closeBraces = (cleanedText.match(/\}/g) || []).length;
-
-          // Add missing closing brackets
-          for (let i = 0; i < openBrackets - closeBrackets; i++) {
-            cleanedText += '\n  ]';
-          }
-          for (let i = 0; i < openBraces - closeBraces; i++) {
-            cleanedText += '\n}';
-          }
-
-          // Add missing fields
-          if (!cleanedText.includes('"date"')) {
-            cleanedText = cleanedText.slice(0, -1) + ',\n  "date": null,\n  "notes": "",\n  "confidence": 0.85\n}';
-          }
+      // Parse JSON from response
+      let rawData;
+      try {
+        let cleanedText = text.trim();
+        // Strip markdown fences if present
+        if (cleanedText.startsWith('```json')) {
+          cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        } else if (cleanedText.startsWith('```')) {
+          cleanedText = cleanedText.replace(/```\n?/g, '');
         }
+        rawData = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError.message);
+        console.error('Raw text (first 500 chars):', text.substring(0, 500));
+        throw new Error('Failed to parse AI response. The image may be unclear.');
       }
 
-      extractedData = JSON.parse(cleanedText);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Raw text:', text);
-      throw new Error('Failed to parse AI response. The image may be unclear.');
-    }
-
-    // Validate extracted data structure
-    if (!extractedData.supplier_or_customer && !extractedData.items) {
-      throw new Error('No data could be extracted from the image. Please ensure the bill is clearly visible.');
-    }
-
-    if (!extractedData.items || extractedData.items.length === 0) {
-      throw new Error('No items found in the bill. Please ensure item details are visible.');
-    }
-
-    // Set default confidence if not provided
-    if (typeof extractedData.confidence !== 'number') {
-      extractedData.confidence = 0.75;
-    }
-
-    // Validate confidence threshold
-    if (extractedData.confidence < 0.40) {
-      throw new Error('Low confidence extraction. Please provide a clearer image with better lighting.');
-    }
-
-    // Calculate amounts if not provided
-    extractedData.items = extractedData.items.map(item => {
-      if (item.amount === 0 && item.rate > 0 && item.quantity > 0) {
-        item.amount = item.rate * item.quantity;
+      // Handle error response from Gemini
+      if (rawData.error) {
+        throw new Error(rawData.suggestion || `AI could not read the document: ${rawData.error}`);
       }
-      return item;
-    });
 
-      console.log('Successfully extracted data with confidence:', extractedData.confidence);
+      // Use schema adapter to handle both v2 and legacy formats
+      const parsed = parseGeminiResponse(rawData);
+      const primary = parsed.primary;
 
-      return extractedData;
+      // Validate minimum data
+      if (!primary.supplier_or_customer && (!primary.items || primary.items.length === 0)) {
+        throw new Error('No data could be extracted from the image. Please ensure the bill is clearly visible.');
+      }
+
+      if (!primary.items || primary.items.length === 0) {
+        throw new Error('No items found in the bill. Please ensure item details are visible.');
+      }
+
+      // Validate confidence threshold
+      if (primary.confidence < 0.40) {
+        throw new Error('Low confidence extraction. Please provide a clearer image with better lighting.');
+      }
+
+      console.log(`✅ Extracted ${primary.items.length} items, confidence: ${primary.confidence}`);
+      if (parsed.multiDocument.count > 1) {
+        console.log(`📑 Multi-document: ${parsed.multiDocument.count} docs (${parsed.multiDocument.relationship})`);
+      }
+
+      // Return flat format for pipeline + preserve parsed extras
+      primary._parsed = parsed;
+      return primary;
 
     } catch (error) {
-      console.error(`Gemini API error (attempt ${attempt}):`, error);
+      console.error(`Gemini API error (attempt ${attempt}):`, error.message);
       lastError = error;
 
       // Don't retry on certain errors
       if (error.message.includes('API key') ||
           error.message.includes('quota') ||
-          error.message.includes('parse')) {
-        break; // Exit retry loop for non-retryable errors
+          error.message.includes('parse') ||
+          error.message.includes('No data') ||
+          error.message.includes('No items')) {
+        break;
       }
 
-      // Wait before retry (exponential backoff)
+      // Exponential backoff
       if (attempt < maxRetries) {
         const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
         console.log(`Waiting ${waitTime}ms before retry...`);
@@ -190,29 +149,23 @@ export async function extractDataFromImage(imageBuffer, options = {}) {
   // All retries failed
   const error = lastError;
   if (error) {
-
-    // Handle specific API errors
     if (error.message.includes('API key')) {
       throw new Error('API configuration error. Please contact support.');
     }
-
     if (error.message.includes('quota') || error.message.includes('rate limit')) {
       throw new Error('Service temporarily busy. Please try again in a few seconds.');
     }
-
     if (error.message.includes('timeout')) {
       throw new Error('Request timeout. Please try again.');
     }
-
-    // Re-throw custom errors
+    // Re-throw custom errors as-is
     if (error.message.includes('confidence') ||
         error.message.includes('No data') ||
         error.message.includes('No items') ||
-        error.message.includes('parse')) {
+        error.message.includes('parse') ||
+        error.message.includes('AI could not')) {
       throw error;
     }
-
-    // Generic error
     throw new Error(`AI processing failed: ${error.message}`);
   }
 }
@@ -231,7 +184,6 @@ export function validateExtractedData(data) {
     confidence: data.confidence || 0.75
   };
 
-  // Validate and sanitize items
   if (Array.isArray(data.items)) {
     sanitized.items = data.items
       .filter(item => item.name && item.quantity > 0)
@@ -253,13 +205,13 @@ export function validateExtractedData(data) {
  */
 export async function testGeminiConnection() {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const result = await model.generateContent('Hello, test connection');
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const result = await model.generateContent('Respond with: {"status": "ok"}');
     const response = await result.response;
-    console.log('Gemini API test successful:', response.text().substring(0, 50));
+    console.log(`Gemini API test [${GEMINI_MODEL}] successful:`, response.text().substring(0, 50));
     return true;
   } catch (error) {
-    console.error('Gemini API test failed:', error);
+    console.error(`Gemini API test [${GEMINI_MODEL}] failed:`, error.message);
     return false;
   }
 }

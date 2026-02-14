@@ -288,6 +288,9 @@ export default function DemoPage() {
             companies={companies} 
             selectedCompany={selectedCompany}
             setSelectedCompany={setSelectedCompany}
+            fetchInvoices={fetchInvoices}
+            loading={loading}
+            stats={stats}
           />
         ) : (
           <BotSimulationView
@@ -310,11 +313,17 @@ export default function DemoPage() {
 function CompaniesView({ 
   companies, 
   selectedCompany, 
-  setSelectedCompany 
+  setSelectedCompany,
+  fetchInvoices,
+  loading,
+  stats
 }: { 
   companies: Company[]; 
   selectedCompany: string | null;
   setSelectedCompany: (id: string | null) => void;
+  fetchInvoices: () => void;
+  loading: boolean;
+  stats: { totalInvoices: number; totalRevenue: number };
 }) {
   const company = selectedCompany ? companies.find(c => c.id === selectedCompany) : null;
 

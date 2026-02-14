@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Challan - {{invoiceNo}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+        }
+
+        .hindi {
+            font-family: 'Noto Sans Devanagari', sans-serif;
+        }
+
+        @page {
+            size: A4;
+            margin: 8mm;
+        }
+
+        .invoice-container {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 8px;
+            background: white;
+        }
+
+        @media print {
+            .invoice-container {
+                margin: 0;
+                padding: 0;
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #000;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .top-section {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .company-details {
+            border: 1px solid #333;
+            padding: 8px;
+        }
+
+        .company-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #000;
+        }
+
+        .company-address {
+            font-size: 9px;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .company-info {
+            font-size: 9px;
+            line-height: 1.5;
+        }
+
+        .company-info div {
+            margin-bottom: 2px;
+        }
+
+        .invoice-details-box {
+            border: 1px solid #333;
+            font-size: 9px;
+        }
+
+        .invoice-details-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .invoice-details-box td {
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+        }
+
+        .invoice-details-box .label {
+            font-weight: 600;
+            width: 60%;
+        }
+
+        .invoice-no {
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .parties-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .party-box {
+            border: 1px solid #333;
+            padding: 8px;
+            font-size: 9px;
+        }
+
+        .party-title {
+            font-weight: 700;
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .party-name {
+            font-weight: 600;
+            font-size: 10px;
+            margin-bottom: 3px;
+        }
+
+        .party-details {
+            line-height: 1.5;
+        }
+
+        .party-details div {
+            margin-bottom: 2px;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            font-size: 9px;
+        }
+
+        .items-table th {
+            background: #f5f5f7;
+            font-weight: 600;
+            padding: 6px 4px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+
+        .items-table td {
+            padding: 6px 4px;
+            border: 1px solid #333;
+        }
+
+        .items-table .text-left {
+            text-align: left;
+        }
+
+        .items-table .text-center {
+            text-align: center;
+        }
+
+        .items-table .text-right {
+            text-align: right;
+        }
+
+        .items-table .total-row td {
+            font-weight: 700;
+            font-size: 11px;
+            background: #f5f5f7;
+        }
+
+        .note-box {
+            padding: 8px;
+            border: 1px solid #333;
+            margin-bottom: 12px;
+            font-size: 9px;
+        }
+
+        .note-box .title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .footer-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .declaration-box {
+            font-size: 9px;
+        }
+
+        .declaration-box .title {
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .declaration-box .text {
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .authorized-signatory {
+            text-align: right;
+            font-weight: 600;
+            margin-top: 24px;
+            font-size: 9px;
+        }
+
+        .receiver-signature {
+            text-align: left;
+            font-weight: 600;
+            margin-top: 24px;
+            font-size: 9px;
+        }
+
+        .bottom-footer {
+            text-align: center;
+            font-size: 9px;
+            font-weight: 600;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+        }
+
+        .bottom-footer div {
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>DELIVERY CHALLAN</h1>
+        </div>
+
+        <!-- Company and Challan Details -->
+        <div class="top-section">
+            <div class="company-details">
+                <div class="company-name">{{company.name}}</div>
+                <div class="company-address">{{company.address}}<br>{{company.city}}</div>
+                <div class="company-info">
+                    {{#if company.udyamRegistration}}
+                    <div>Udyam Registration {{company.udyamRegistration}}</div>
+                    {{/if}}
+                    <div><strong>GSTIN/UIN:</strong> {{company.gstin}}</div>
+                    <div><strong>State Name :</strong> {{company.stateName}}, Code : {{company.stateCode}}</div>
+                    {{#if company.cin}}
+                    <div><strong>CIN:</strong> {{company.cin}}</div>
+                    {{/if}}
+                    <div><strong>Contact :</strong> {{company.contact}}</div>
+                    <div><strong>E-Mail :</strong> {{company.email}}</div>
+                </div>
+            </div>
+
+            <div class="invoice-details-box">
+                <table>
+                    <tr>
+                        <td class="label">Challan No.</td>
+                        <td class="invoice-no">{{invoiceNo}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Dated</td>
+                        <td>{{dated}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Invoice Reference</td>
+                        <td>{{referenceNo}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Vehicle No.</td>
+                        <td class="invoice-no">{{motorVehicleNo}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Driver Name</td>
+                        <td>{{driverName}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">LR/RR No.</td>
+                        <td>{{billOfLading}}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Destination</td>
+                        <td>{{destination}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Consignee Details -->
+        <div class="parties-section">
+            <div class="party-box">
+                <div class="party-title">Consignee (Ship to)</div>
+                <div class="party-name">{{consignee.name}}</div>
+                <div class="party-details">
+                    <div>{{consignee.address}}</div>
+                    <div><strong>GSTIN/UIN :</strong> {{consignee.gstin}}</div>
+                    <div><strong>State Name :</strong> {{consignee.stateName}}, Code : {{consignee.stateCode}}</div>
+                </div>
+            </div>
+
+            <div class="party-box">
+                <div class="party-title">Bill To</div>
+                <div class="party-name">{{billTo.name}}</div>
+                <div class="party-details">
+                    <div>{{billTo.address}}</div>
+                    <div><strong>GSTIN/UIN :</strong> {{billTo.gstin}}</div>
+                    <div><strong>State Name :</strong> {{billTo.stateName}}, Code : {{billTo.stateCode}}</div>
+                    <div><strong>Place of Supply :</strong> {{placeOfSupply}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table (No Pricing) -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">Sl<br>No.</th>
+                    <th style="width: 50%;">Description of Goods</th>
+                    <th style="width: 12%;">HSN/SAC</th>
+                    <th style="width: 15%;">Quantity</th>
+                    <th style="width: 15%;">Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each items}}
+                <tr>
+                    <td class="text-center">{{slNo}}</td>
+                    <td class="text-left">{{description}}</td>
+                    <td class="text-center">{{hsnCode}}</td>
+                    <td class="text-right"><strong>{{quantity}}</strong></td>
+                    <td class="text-center">{{unit}}</td>
+                </tr>
+                {{/each}}
+
+                <!-- Empty rows for spacing -->
+                <tr style="height: 100px;">
+                    <td colspan="5"></td>
+                </tr>
+
+                <!-- Total -->
+                <tr class="total-row">
+                    <td colspan="2" class="text-center"><strong>Total</strong></td>
+                    <td></td>
+                    <td class="text-right"><strong>{{totalQuantity}}</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Note -->
+        <div class="note-box">
+            <div class="title">Note:</div>
+            <div>This is a delivery challan for goods in transit. This is not a tax invoice.</div>
+            <div>{{declaration}}</div>
+        </div>
+
+        <!-- Signatures -->
+        <div class="footer-section">
+            <div>
+                <div class="declaration-box">
+                    <div class="title">Company's GSTIN</div>
+                    <div><strong>{{company.gstin}}</strong></div>
+                </div>
+                <div class="receiver-signature">
+                    Receiver's Signature<br>
+                    <div style="margin-top: 4px; font-weight: normal; font-size: 8px;">Name & Date:</div>
+                </div>
+            </div>
+
+            <div>
+                <div style="font-size: 9px; margin-bottom: 8px;">
+                    <div style="font-weight: 700; margin-bottom: 4px;">for {{company.name}}</div>
+                </div>
+                <div class="authorized-signatory">
+                    Authorised Signatory
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Footer -->
+        <div class="bottom-footer">
+            {{#if jurisdiction}}
+            <div>{{jurisdiction}}</div>
+            {{/if}}
+            <div>This is a Computer Generated Delivery Challan</div>
+        </div>
+    </div>
+</body>
+</html>

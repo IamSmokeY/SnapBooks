@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ProcessingMessage,
@@ -37,14 +37,92 @@ interface Company {
   invoices: Invoice[];
 }
 
+// API Configuration
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3004';
+
 export default function DemoPage() {
   const [view, setView] = useState<DemoView>('companies');
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [step, setStep] = useState<'upload' | 'processing' | 'confirmation' | 'success'>('upload');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalInvoices: 0, totalRevenue: 0 });
 
-  // Sample companies data
-  const companies: Company[] = [
+  // Fetch real data from API
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch invoices from API
+      const response = await fetch(`${API_URL}/api/invoices?limit=100`);
+      const data = await response.json();
+
+      if (data.success && data.invoices) {
+        // Group invoices by customer
+        const grouped = groupInvoicesByCustomer(data.invoices);
+        setCompanies(grouped);
+
+        // Calculate stats
+        const totalRevenue = data.invoices.reduce((sum: number, inv: any) => sum + (inv.grand_total || 0), 0);
+        setStats({
+          totalInvoices: data.invoices.length,
+          totalRevenue
+        });
+      } else {
+        // Fallback to demo data if API fails
+        setCompanies(getDemoCompanies());
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      // Fallback to demo data
+      setCompanies(getDemoCompanies());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const groupInvoicesByCustomer = (invoices: any[]): Company[] => {
+    const grouped: { [key: string]: Company } = {};
+
+    invoices.forEach((invoice) => {
+      const customerName = invoice.customer_name || 'Unknown Customer';
+
+      if (!grouped[customerName]) {
+        grouped[customerName] = {
+          id: customerName.toLowerCase().replace(/\s+/g, '-'),
+          name: customerName,
+          gstin: invoice.business_gstin || 'N/A',
+          location: invoice.customer_state || invoice.business_state || 'Unknown',
+          totalInvoices: 0,
+          totalRevenue: 0,
+          invoices: []
+        };
+      }
+
+      grouped[customerName].totalInvoices++;
+      grouped[customerName].totalRevenue += invoice.grand_total || 0;
+      grouped[customerName].invoices.push({
+        id: invoice.invoice_number || `inv-${Date.now()}`,
+        invoiceNo: invoice.invoice_number || 'N/A',
+        date: invoice.date || new Date().toISOString().split('T')[0],
+        vehicleNo: invoice.items?.[0]?.name || 'N/A',
+        material: invoice.items?.[0]?.name || 'Various Items',
+        netWeight: invoice.items?.[0]?.quantity || 0,
+        amount: invoice.grand_total || 0,
+        status: invoice.grand_total > 0 ? 'paid' : 'pending'
+      });
+    });
+
+    return Object.values(grouped);
+  };
+
+  // Fallback demo companies data
+  const getDemoCompanies = (): Company[] => [
     {
       id: 'c1',
       name: 'Rajasthan Minerals Ltd.',
@@ -268,9 +346,35 @@ function CompaniesView({
           </>
         ) : (
           <>
-            <h2 className="text-5xl font-bold tracking-tight mb-4">
-              Company <span className="bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent">Dashboard</span>
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-5xl font-bold tracking-tight">
+                Company <span className="bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent">Dashboard</span>
+              </h2>
+              <div className="flex items-center gap-3">
+                <div className="px-4 py-2 bg-[#30D158]/10 border border-[#30D158]/30 rounded-xl">
+                  <span className="text-sm text-[#30D158] font-bold">🟢 Live Data</span>
+                </div>
+                <button
+                  onClick={fetchInvoices}
+                  disabled={loading}
+                  className="px-4 py-2 bg-[#0A84FF]/10 border border-[#0A84FF]/30 rounded-xl text-[#0A84FF] font-bold hover:bg-[#0A84FF]/20 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '⏳ Loading...' : '🔄 Refresh'}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-8 mb-4">
+              <div>
+                <p className="text-sm text-[#86868B] uppercase tracking-wider">Total Invoices</p>
+                <p className="text-3xl font-bold text-white">{stats.totalInvoices}</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#86868B] uppercase tracking-wider">Total Revenue</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-[#30D158] to-[#0A84FF] bg-clip-text text-transparent">
+                  ₹{(stats.totalRevenue / 1000).toFixed(1)}K
+                </p>
+              </div>
+            </div>
             <p className="text-xl text-[#86868B] leading-relaxed">
               Manage multiple companies and their weighbridge invoices in one place
             </p>
@@ -281,7 +385,34 @@ function CompaniesView({
       {/* Companies Grid or Single Company View */}
       {!company ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {companies.map((comp) => (
+          {loading ? (
+            // Loading state
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border-2 border-[#38383A] rounded-3xl animate-pulse">
+                  <div className="h-16 w-16 bg-[#38383A] rounded-2xl mb-6"></div>
+                  <div className="h-6 bg-[#38383A] rounded mb-4 w-3/4"></div>
+                  <div className="h-4 bg-[#38383A] rounded mb-2 w-1/2"></div>
+                  <div className="h-4 bg-[#38383A] rounded mb-6 w-2/3"></div>
+                  <div className="h-10 bg-[#38383A] rounded w-full"></div>
+                </div>
+              ))}
+            </>
+          ) : companies.length === 0 ? (
+            // Empty state
+            <div className="col-span-3 text-center py-20">
+              <div className="text-6xl mb-4">📭</div>
+              <h3 className="text-2xl font-bold text-white mb-2">No Invoices Yet</h3>
+              <p className="text-[#86868B] mb-6">Send a photo to @snapbooks_bot to create your first invoice!</p>
+              <button
+                onClick={fetchInvoices}
+                className="px-6 py-3 bg-gradient-to-r from-[#0A84FF] to-[#30D158] rounded-xl font-bold hover:opacity-90 transition-opacity"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+          ) : (
+            companies.map((comp) => (
                       <div key={comp.id}
               onClick={() => setSelectedCompany(comp.id)}
               className="group relative glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border-2 border-[#38383A] rounded-3xl hover:border-[#0A84FF] transition-all duration-500 cursor-pointer overflow-hidden"
@@ -326,7 +457,8 @@ function CompaniesView({
                 </div>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
       ) : (
         <div className="space-y-8">

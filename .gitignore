@@ -217,3 +217,4 @@ pipeline-output-*.xml
 pipeline-output-*.json
 test-invoice-*.pdf
 test-invoice-*.html
+firebase-service-account.json

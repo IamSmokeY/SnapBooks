@@ -284,13 +284,13 @@ export default function DemoPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
         {view === 'companies' ? (
-          <CompaniesView 
-            companies={companies} 
+          <CompaniesView
+            companies={companies}
             selectedCompany={selectedCompany}
             setSelectedCompany={setSelectedCompany}
-            fetchInvoices={fetchInvoices}
             loading={loading}
             stats={stats}
+            fetchInvoices={fetchInvoices}
           />
         ) : (
           <BotSimulationView
@@ -310,20 +310,20 @@ export default function DemoPage() {
 }
 
 // Companies View Component
-function CompaniesView({ 
-  companies, 
-  selectedCompany, 
+function CompaniesView({
+  companies,
+  selectedCompany,
   setSelectedCompany,
-  fetchInvoices,
   loading,
-  stats
-}: { 
-  companies: Company[]; 
+  stats,
+  fetchInvoices
+}: {
+  companies: Company[];
   selectedCompany: string | null;
   setSelectedCompany: (id: string | null) => void;
-  fetchInvoices: () => void;
   loading: boolean;
   stats: { totalInvoices: number; totalRevenue: number };
+  fetchInvoices: () => Promise<void>;
 }) {
   const company = selectedCompany ? companies.find(c => c.id === selectedCompany) : null;
 

@@ -16,7 +16,7 @@ INVOICES_DIR.mkdir(exist_ok=True)
 class GenerateInvoiceRequest(BaseModel):
     invoice_data: InvoiceData = Field(..., description="Extracted invoice data")
     user_id: str | None = Field(None, description="Telegram user ID for tracking")
-    save_to_firebase: bool = Field(True, description="Whether to upload to Firebase Storage and Firestore")
+    save_to_firebase: bool = Field(False, description="Whether to upload to Firebase Storage and Firestore")
 
 
 # ── Number to Indian English words ──────────────────────────────────────────
@@ -512,12 +512,11 @@ async def generate_invoice_pdf(request: GenerateInvoiceRequest) -> ToolResponse:
                 "customer_state": buyer.state_name,
                 "items": [
                     {
-                        "name": item.description,
+                        "name": item.name,
                         "quantity": item.quantity,
                         "unit": item.unit,
                         "rate": item.rate,
                         "amount": item.amount,
-                        "gst_rate": item.tax_rate or 0,
                         "hsn_code": item.hsn_code,
                     }
                     for item in data.items

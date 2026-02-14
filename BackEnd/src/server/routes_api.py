@@ -1,147 +1,137 @@
-"""REST API endpoints for frontend dashboard."""
+"""REST API routes for the frontend dashboard.
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+All endpoints gracefully handle missing Firebase configuration
+by returning empty results instead of crashing.
+"""
 
-from src.firebase import get_db
+from fastapi import APIRouter
+
 from src.logger import log
 
 router = APIRouter(prefix="/api", tags=["api"])
 
 
-class InvoiceResponse(BaseModel):
-    """Response model for invoice data."""
-    id: str
-    invoice_number: str | None = None
-    customer_name: str | None = None
-    date: str | None = None
-    grand_total: float = 0
-    created_at: str | None = None
-    document_type: str | None = None
-    pdf_url: str | None = None
-    xml_url: str | None = None
-
-
-class InvoicesListResponse(BaseModel):
-    """Response model for invoices list."""
-    success: bool = True
-    count: int
-    invoices: list[dict]
-
-
-class StatsResponse(BaseModel):
-    """Response model for statistics."""
-    success: bool = True
-    stats: dict
-
-
-@router.get("/invoices", response_model=InvoicesListResponse)
-async def get_invoices(limit: int = 50, userId: str | None = None):
-    """
-    Get all invoices with optional filtering.
-
-    Args:
-        limit: Maximum number of invoices to return (default: 50)
-        userId: Optional user ID to filter by
-    """
+def _get_db_or_none():
+    """Try to get Firestore client; return None if Firebase isn't configured."""
     try:
-        db = get_db()
-        query = db.collection('invoices').order_by(
-            'created_at', direction='DESCENDING'
-        ).limit(limit)
+        from src.firebase import get_db
+        return get_db()
+    except Exception:
+        return None
 
+
+@router.get("/invoices")
+async def list_invoices(limit: int = 50, userId: str | None = None):
+    """List invoices from Firestore."""
+    db = _get_db_or_none()
+    if db is None:
+        return {"success": True, "count": 0, "invoices": [], "note": "Firebase not configured"}
+
+    try:
+        query = db.collection("invoices").limit(limit)
         if userId:
-            query = query.where('user_id', '==', userId)
-
+            query = query.where("user_id", "==", userId)
         docs = await query.get()
 
         invoices = []
         for doc in docs:
             data = doc.to_dict()
-            # Convert Firestore timestamp to ISO string
-            if data.get('created_at'):
-                data['created_at'] = data['created_at'].isoformat() if hasattr(data['created_at'], 'isoformat') else str(data['created_at'])
+            if data.get("created_at") and hasattr(data["created_at"], "isoformat"):
+                data["created_at"] = data["created_at"].isoformat()
+            invoices.append({"id": doc.id, **data})
 
-            invoices.append({
-                'id': doc.id,
-                **data
-            })
-
-        log("invoices_fetched", count=len(invoices), user_id=userId)
-        return InvoicesListResponse(count=len(invoices), invoices=invoices)
-
+        log("invoices_fetched", count=len(invoices))
+        return {"success": True, "count": len(invoices), "invoices": invoices}
     except Exception as e:
-        log("invoices_fetch_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        log("api_invoices_error", error=str(e))
+        return {"success": False, "error": str(e), "invoices": []}
 
 
 @router.get("/invoices/{invoice_id}")
 async def get_invoice(invoice_id: str):
     """Get a single invoice by ID."""
-    try:
-        db = get_db()
-        doc = await db.collection('invoices').document(invoice_id).get()
+    db = _get_db_or_none()
+    if db is None:
+        return {"success": False, "error": "Firebase not configured"}
 
+    try:
+        doc = await db.collection("invoices").document(invoice_id).get()
         if not doc.exists:
-            raise HTTPException(status_code=404, detail="Invoice not found")
+            return {"success": False, "error": "Invoice not found"}
 
         data = doc.to_dict()
-        # Convert timestamp
-        if data.get('created_at'):
-            data['created_at'] = data['created_at'].isoformat() if hasattr(data['created_at'], 'isoformat') else str(data['created_at'])
+        if data.get("created_at") and hasattr(data["created_at"], "isoformat"):
+            data["created_at"] = data["created_at"].isoformat()
 
-        log("invoice_fetched", invoice_id=invoice_id)
-        return {
-            "success": True,
-            "invoice": {
-                "id": doc.id,
-                **data
-            }
-        }
-
-    except HTTPException:
-        raise
+        return {"success": True, "invoice": {"id": doc.id, **data}}
     except Exception as e:
-        log("invoice_fetch_error", invoice_id=invoice_id, error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        log("api_invoice_error", error=str(e))
+        return {"success": False, "error": str(e)}
 
 
-@router.get("/stats", response_model=StatsResponse)
+@router.get("/stats")
 async def get_stats():
     """Get invoice statistics."""
-    try:
-        db = get_db()
-        docs = await db.collection('invoices').get()
-
-        total_revenue = 0
-        document_types = {}
-
-        for doc in docs:
-            data = doc.to_dict()
-            total_revenue += data.get('grand_total', 0)
-
-            doc_type = data.get('document_type', 'unknown')
-            document_types[doc_type] = document_types.get(doc_type, 0) + 1
-
-        stats = {
-            "totalInvoices": len(docs),
-            "totalRevenue": total_revenue,
-            "documentTypes": document_types
+    db = _get_db_or_none()
+    if db is None:
+        return {
+            "success": True,
+            "stats": {"totalInvoices": 0, "totalRevenue": 0, "documentTypes": {}},
+            "note": "Firebase not configured",
         }
 
-        log("stats_fetched", total_invoices=len(docs), total_revenue=total_revenue)
-        return StatsResponse(stats=stats)
+    try:
+        docs = await db.collection("invoices").get()
 
+        total_revenue = 0
+        document_types: dict[str, int] = {}
+        for doc in docs:
+            data = doc.to_dict()
+            total_revenue += data.get("grand_total", 0)
+            doc_type = data.get("document_type", "unknown")
+            document_types[doc_type] = document_types.get(doc_type, 0) + 1
+
+        return {
+            "success": True,
+            "stats": {
+                "totalInvoices": len(docs),
+                "totalRevenue": total_revenue,
+                "documentTypes": document_types,
+            },
+        }
     except Exception as e:
-        log("stats_fetch_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        log("api_stats_error", error=str(e))
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/contacts")
+async def list_contacts(q: str = ""):
+    """List/search contacts."""
+    db = _get_db_or_none()
+    if db is None:
+        return {"success": True, "count": 0, "contacts": [], "note": "Firebase not configured"}
+
+    try:
+        docs = await db.collection("contacts").get()
+        contacts = []
+        query_lower = q.lower()
+        for doc in docs:
+            data = doc.to_dict()
+            if not q or query_lower in data.get("name", "").lower():
+                contacts.append({"id": doc.id, **data})
+        return {"success": True, "count": len(contacts), "contacts": contacts}
+    except Exception as e:
+        log("api_contacts_error", error=str(e))
+        return {"success": False, "error": str(e)}
 
 
 @router.get("/health")
 async def health_check():
     """Health check endpoint."""
+    from src.firebase import get_app
+    firebase_ok = get_app() is not None
     return {
         "success": True,
-        "message": "SnapBooks API is running",
-        "service": "Python FastAPI Backend"
+        "service": "SnapBooks API",
+        "firebase": "connected" if firebase_ok else "not configured",
     }

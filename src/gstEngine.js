@@ -220,38 +220,59 @@ export function calculateInvoice(extractedData, customerState = null) {
 
 /**
  * Format amount in words (for invoice)
+ * Uses Indian numbering system (Lakh, Thousand, Hundred)
  * @param {number} amount - Amount to convert
  * @returns {string} Amount in words
  */
 export function amountToWords(amount) {
+  if (amount === 0) return 'Zero Rupees Only';
+
+  const num = Math.floor(amount);
+  const paise = Math.round((amount - num) * 100);
+
+  let result = numberToWords(num) + ' Rupees';
+  if (paise > 0) {
+    result += ' and ' + numberToWords(paise) + ' Paise';
+  }
+  result += ' Only';
+  return result;
+}
+
+/**
+ * Convert a number to words (internal helper — no currency suffix)
+ * @param {number} num - Non-negative integer
+ * @returns {string} Number in words
+ */
+function numberToWords(num) {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
   const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
 
-  if (amount === 0) return 'Zero Rupees Only';
+  if (num === 0) return '';
+  if (num < 0) return 'Minus ' + numberToWords(-num);
 
-  const num = Math.floor(amount);
   let words = '';
 
-  // Lakhs
+  if (num >= 10000000) {
+    words += numberToWords(Math.floor(num / 10000000)) + ' Crore ';
+    num %= 10000000;
+  }
+
   if (num >= 100000) {
-    words += amountToWords(Math.floor(num / 100000)) + ' Lakh ';
-    return words + amountToWords(num % 100000);
+    words += numberToWords(Math.floor(num / 100000)) + ' Lakh ';
+    num %= 100000;
   }
 
-  // Thousands
   if (num >= 1000) {
-    words += amountToWords(Math.floor(num / 1000)) + ' Thousand ';
-    return words + amountToWords(num % 1000);
+    words += numberToWords(Math.floor(num / 1000)) + ' Thousand ';
+    num %= 1000;
   }
 
-  // Hundreds
   if (num >= 100) {
     words += ones[Math.floor(num / 100)] + ' Hundred ';
-    return words + amountToWords(num % 100);
+    num %= 100;
   }
 
-  // Tens and Ones
   if (num >= 20) {
     words += tens[Math.floor(num / 10)] + ' ';
     if (num % 10 > 0) {
@@ -263,7 +284,7 @@ export function amountToWords(amount) {
     words += ones[num] + ' ';
   }
 
-  return words.trim() + ' Rupees Only';
+  return words.trim();
 }
 
 /**

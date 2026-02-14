@@ -17,10 +17,11 @@ const TEMPLATE_MAP = {
   'delivery_challan': 'delivery-challan.html'
 };
 
-// Try frontend templates first, fallback to root templates
+// Root templates use simple {{PLACEHOLDER}} format compatible with our string replacement.
+// Frontend templates use Handlebars syntax — only fallback if root is missing.
 const TEMPLATE_PATHS = [
-  join(__dirname, '../frontend/templates'),
-  join(__dirname, '../templates')
+  join(__dirname, '../templates'),
+  join(__dirname, '../frontend/templates')
 ];
 
 /**

@@ -5,7 +5,6 @@ const nextConfig = {
   reactStrictMode: true,
 
   // Fix workspace root detection for monorepo
-  output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../'),
 
   // Enable experimental features for better performance

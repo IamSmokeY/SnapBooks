@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ProcessingMessage,
@@ -49,44 +49,7 @@ export default function DemoPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalInvoices: 0, totalRevenue: 0 });
 
-  // Fetch real data from API
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch invoices from API
-      const response = await fetch(`${API_URL}/api/invoices?limit=100`);
-      const data = await response.json();
-
-      if (data.success && data.invoices) {
-        // Group invoices by customer
-        const grouped = groupInvoicesByCustomer(data.invoices);
-        setCompanies(grouped);
-
-        // Calculate stats
-        const totalRevenue = data.invoices.reduce((sum: number, inv: any) => sum + (inv.grand_total || 0), 0);
-        setStats({
-          totalInvoices: data.invoices.length,
-          totalRevenue
-        });
-      } else {
-        // Fallback to demo data if API fails
-        setCompanies(getDemoCompanies());
-      }
-    } catch (error) {
-      console.error('Error fetching invoices:', error);
-      // Fallback to demo data
-      setCompanies(getDemoCompanies());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const groupInvoicesByCustomer = (invoices: any[]): Company[] => {
+  const groupInvoicesByCustomer = useCallback((invoices: any[]): Company[] => {
     const grouped: { [key: string]: Company } = {};
 
     invoices.forEach((invoice) => {
@@ -119,7 +82,45 @@ export default function DemoPage() {
     });
 
     return Object.values(grouped);
-  };
+  }, []);
+
+  // Fetch real data from API
+  const fetchInvoices = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Fetch invoices from API
+      const response = await fetch(`${API_URL}/api/invoices?limit=100`);
+      const data = await response.json();
+
+      if (data.success && data.invoices) {
+        // Group invoices by customer
+        const grouped = groupInvoicesByCustomer(data.invoices);
+        setCompanies(grouped);
+
+        // Calculate stats
+        const totalRevenue = data.invoices.reduce((sum: number, inv: any) => sum + (inv.grand_total || 0), 0);
+        setStats({
+          totalInvoices: data.invoices.length,
+          totalRevenue
+        });
+      } else {
+        // Fallback to demo data if API fails
+        setCompanies(getDemoCompanies());
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      // Fallback to demo data
+      setCompanies(getDemoCompanies());
+    } finally {
+      setLoading(false);
+    }
+  }, [groupInvoicesByCustomer]);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
 
   // Fallback demo companies data
   const getDemoCompanies = (): Company[] => [

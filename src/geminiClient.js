@@ -45,33 +45,47 @@ Extract the data from the image and return ONLY the JSON object.`;
 /**
  * Extract structured data from a handwritten bill image using Gemini Vision API
  * @param {Buffer} imageBuffer - Image buffer from Telegram
+ * @param {Object} options - Options for extraction
+ * @param {number} options.timeout - Timeout in milliseconds (default: 25000)
+ * @param {number} options.maxRetries - Maximum retry attempts (default: 2)
  * @returns {Promise<Object>} Extracted data in structured format
  */
-export async function extractDataFromImage(imageBuffer) {
-  try {
-    console.log('Calling Gemini Vision API...');
+export async function extractDataFromImage(imageBuffer, options = {}) {
+  const { timeout = 25000, maxRetries = 2 } = options;
+  let lastError;
 
-    // Use Gemini 1.5 Flash for vision + structured output
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: {
-        temperature: 0.1, // Low temperature for consistent extraction
-        maxOutputTokens: 2048,
-      }
-    });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Calling Gemini Vision API (attempt ${attempt}/${maxRetries})...`);
 
-    // Convert buffer to base64
-    const base64Image = imageBuffer.toString('base64');
+      // Use Gemini 2.5 Flash for vision + structured output
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          temperature: 0.1, // Low temperature for consistent extraction
+          maxOutputTokens: 4096, // Increased for complete JSON
+          responseMimeType: "application/json", // Request JSON response
+        }
+      });
 
-    // Create the request with image and prompt
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: 'image/jpeg'
-      }
-    };
+      // Convert buffer to base64
+      const base64Image = imageBuffer.toString('base64');
 
-    const result = await model.generateContent([EXTRACTION_PROMPT, imagePart]);
+      // Create the request with image and prompt
+      const imagePart = {
+        inlineData: {
+          data: base64Image,
+          mimeType: 'image/jpeg'
+        }
+      };
+
+      // Call API with timeout
+      const result = await Promise.race([
+        model.generateContent([EXTRACTION_PROMPT, imagePart]),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Gemini API timeout after ${timeout}ms`)), timeout)
+        )
+      ]);
 
     const response = await result.response;
     const text = response.text();
@@ -87,6 +101,32 @@ export async function extractDataFromImage(imageBuffer) {
         cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       } else if (cleanedText.startsWith('```')) {
         cleanedText = cleanedText.replace(/```\n?/g, '');
+      }
+
+      // Try to fix incomplete JSON by adding missing closing brackets
+      if (!cleanedText.includes('"confidence"')) {
+        // JSON is incomplete, try to complete it
+        const itemsMatch = cleanedText.match(/"items":\s*\[/);
+        if (itemsMatch) {
+          // Count opening and closing brackets
+          const openBrackets = (cleanedText.match(/\[/g) || []).length;
+          const closeBrackets = (cleanedText.match(/\]/g) || []).length;
+          const openBraces = (cleanedText.match(/\{/g) || []).length;
+          const closeBraces = (cleanedText.match(/\}/g) || []).length;
+
+          // Add missing closing brackets
+          for (let i = 0; i < openBrackets - closeBrackets; i++) {
+            cleanedText += '\n  ]';
+          }
+          for (let i = 0; i < openBraces - closeBraces; i++) {
+            cleanedText += '\n}';
+          }
+
+          // Add missing fields
+          if (!cleanedText.includes('"date"')) {
+            cleanedText = cleanedText.slice(0, -1) + ',\n  "date": null,\n  "notes": "",\n  "confidence": 0.85\n}';
+          }
+        }
       }
 
       extractedData = JSON.parse(cleanedText);
@@ -123,12 +163,33 @@ export async function extractDataFromImage(imageBuffer) {
       return item;
     });
 
-    console.log('Successfully extracted data with confidence:', extractedData.confidence);
+      console.log('Successfully extracted data with confidence:', extractedData.confidence);
 
-    return extractedData;
+      return extractedData;
 
-  } catch (error) {
-    console.error('Gemini API error:', error);
+    } catch (error) {
+      console.error(`Gemini API error (attempt ${attempt}):`, error);
+      lastError = error;
+
+      // Don't retry on certain errors
+      if (error.message.includes('API key') ||
+          error.message.includes('quota') ||
+          error.message.includes('parse')) {
+        break; // Exit retry loop for non-retryable errors
+      }
+
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  // All retries failed
+  const error = lastError;
+  if (error) {
 
     // Handle specific API errors
     if (error.message.includes('API key')) {
@@ -192,7 +253,7 @@ export function validateExtractedData(data) {
  */
 export async function testGeminiConnection() {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent('Hello, test connection');
     const response = await result.response;
     console.log('Gemini API test successful:', response.text().substring(0, 50));

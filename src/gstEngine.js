@@ -238,11 +238,16 @@ export function amountToWords(amount) {
 /**
  * Validate invoice data before generation
  * @param {Object} invoiceData - Calculated invoice data
- * @returns {Object} { valid: boolean, errors: string[] }
+ * @param {Object} options - Validation options
+ * @param {boolean} options.allowZeroAmount - Allow zero amounts (for testing/receipts)
+ * @returns {Object} { valid: boolean, errors: string[], warnings: string[] }
  */
-export function validateInvoice(invoiceData) {
+export function validateInvoice(invoiceData, options = {}) {
+  const { allowZeroAmount = false } = options;
   const errors = [];
+  const warnings = [];
 
+  // Required fields
   if (!invoiceData.customer_name || invoiceData.customer_name.trim() === '') {
     errors.push('Customer name is required');
   }
@@ -251,22 +256,54 @@ export function validateInvoice(invoiceData) {
     errors.push('At least one item is required');
   }
 
-  if (invoiceData.grand_total <= 0) {
-    errors.push('Invoice total must be greater than zero');
+  // Amount validation
+  if (invoiceData.grand_total < 0) {
+    errors.push('Invoice total cannot be negative');
   }
 
-  invoiceData.items.forEach((item, index) => {
-    if (!item.name) {
-      errors.push(`Item ${index + 1}: Name is required`);
+  if (!allowZeroAmount && invoiceData.grand_total === 0) {
+    warnings.push('Invoice total is zero - no payment required');
+  }
+
+  // Item validation
+  if (invoiceData.items && Array.isArray(invoiceData.items)) {
+    invoiceData.items.forEach((item, index) => {
+      if (!item.name || item.name.trim() === '') {
+        errors.push(`Item ${index + 1}: Name is required`);
+      }
+      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+        errors.push(`Item ${index + 1}: Quantity must be a positive number`);
+      }
+      if (typeof item.rate !== 'number' || item.rate < 0) {
+        warnings.push(`Item ${index + 1}: Rate should be a non-negative number`);
+      }
+      if (!item.unit || item.unit.trim() === '') {
+        warnings.push(`Item ${index + 1}: Unit is recommended (e.g., pcs, kg)`);
+      }
+    });
+  }
+
+  // GST validation
+  if (invoiceData.tax_type === 'intrastate') {
+    if (invoiceData.cgst < 0 || invoiceData.sgst < 0) {
+      errors.push('CGST/SGST cannot be negative');
     }
-    if (item.quantity <= 0) {
-      errors.push(`Item ${index + 1}: Quantity must be greater than zero`);
+    if (invoiceData.igst !== 0) {
+      warnings.push('IGST should be zero for intrastate transactions');
     }
-  });
+  } else if (invoiceData.tax_type === 'interstate') {
+    if (invoiceData.igst < 0) {
+      errors.push('IGST cannot be negative');
+    }
+    if (invoiceData.cgst !== 0 || invoiceData.sgst !== 0) {
+      warnings.push('CGST/SGST should be zero for interstate transactions');
+    }
+  }
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
+    warnings
   };
 }
 

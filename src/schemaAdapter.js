@@ -169,10 +169,10 @@ export function formatForTelegram(parsed) {
 
   const confidenceEmoji = doc.confidence >= 0.85 ? '🎯' : doc.confidence >= 0.60 ? '⚠️' : '❗';
   const confidenceWarning = doc.confidence < 0.85
-    ? '\n\n⚠️ *Please verify the data carefully*'
+    ? '\n\n⚠️ <b>Please verify the data carefully</b>'
     : '';
 
-  let message = `📋 *Extracted Data*\n\n`;
+  let message = `📋 <b>Extracted Data</b>\n\n`;
 
   // Document type badge (from v2)
   if (v2 && v2.document_type) {
@@ -186,7 +186,7 @@ export function formatForTelegram(parsed) {
       quotation: '📝 Quotation',
       other: '📄 Document'
     };
-    message += `*Type:* ${typeLabels[v2.document_type] || v2.document_type}\n`;
+    message += `<b>Type:</b> ${typeLabels[v2.document_type] || v2.document_type}\n`;
   }
 
   message += `👤 ${doc.supplier_or_customer || 'Unknown'}\n`;
@@ -201,13 +201,13 @@ export function formatForTelegram(parsed) {
   if (doc.items && doc.items.length > 0) {
     doc.items.forEach((item, index) => {
       message += `┌─────────────────────────────\n`;
-      message += `│ *Item ${index + 1}:* ${item.name}\n`;
-      message += `│ *Qty:* ${item.quantity} ${item.unit}\n`;
+      message += `│ <b>Item ${index + 1}:</b> ${item.name}\n`;
+      message += `│ <b>Qty:</b> ${item.quantity} ${item.unit}\n`;
       if (item.rate > 0) {
-        message += `│ *Rate:* ₹${item.rate}/${item.unit}\n`;
+        message += `│ <b>Rate:</b> ₹${item.rate}/${item.unit}\n`;
       }
       if (item.amount > 0) {
-        message += `│ *Amount:* ₹${item.amount.toLocaleString('en-IN')}\n`;
+        message += `│ <b>Amount:</b> ₹${item.amount.toLocaleString('en-IN')}\n`;
       }
       message += `└─────────────────────────────\n\n`;
     });
@@ -215,7 +215,7 @@ export function formatForTelegram(parsed) {
 
   // Show key additional fields (from v2)
   if (v2 && v2.additional_fields && v2.additional_fields.length > 0) {
-    message += `📎 *Additional Details:*\n`;
+    message += `📎 <b>Additional Details:</b>\n`;
     for (const field of v2.additional_fields.slice(0, 6)) {
       const warn = field.confidence === 'low' ? ' ⚠️' : '';
       message += `  • ${field.label}: ${field.value}${warn}\n`;
@@ -225,21 +225,21 @@ export function formatForTelegram(parsed) {
 
   // Multi-document notice
   if (parsed.multiDocument && parsed.multiDocument.count > 1) {
-    message += `📑 *${parsed.multiDocument.count} documents detected* (${parsed.multiDocument.relationship})\n`;
+    message += `📑 <b>${parsed.multiDocument.count} documents detected</b> (${parsed.multiDocument.relationship})\n`;
     if (parsed.multiDocument.link_note) {
-      message += `↳ ${parsed.multiDocument.link_note}\n`;
+      message += `   ${parsed.multiDocument.link_note}\n`;
     }
     message += '\n';
   }
 
   // Crossed-out items warning
   if (v2 && v2.crossed_out_items && v2.crossed_out_items.length > 0) {
-    message += `🚫 *${v2.crossed_out_items.length} crossed-out item(s) found* — excluded from totals\n\n`;
+    message += `🚫 <b>${v2.crossed_out_items.length} crossed-out item(s) found</b> — excluded from totals\n\n`;
   }
 
-  message += `${confidenceEmoji} *Confidence:* ${Math.round(doc.confidence * 100)}%`;
+  message += `${confidenceEmoji} <b>Confidence:</b> ${Math.round(doc.confidence * 100)}%`;
   message += confidenceWarning;
-  message += `\n\n*Select document type and confirm:*`;
+  message += `\n\n<b>Select document type and confirm:</b>`;
 
   return message;
 }

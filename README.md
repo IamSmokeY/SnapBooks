@@ -1,8 +1,8 @@
 # SnapBooks — Telegram AI Accountant
 
-> Convert handwritten bills to GST-compliant invoices in 30 seconds
+# 📒 SnapBooks
 
-A Telegram bot that uses Gemini Vision AI to extract data from handwritten "kata parchi" (bill notes) and generates professional invoices, Tally XML, and manages inventory.
+### AI-Powered Telegram Accountant for Indian SMBs
 
 ## Features
 

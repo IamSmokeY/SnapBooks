@@ -51,9 +51,9 @@ export async function extractDataFromImage(imageBuffer) {
   try {
     console.log('Calling Gemini Vision API...');
 
-    // Use Gemini Pro Vision for vision + structured output
+    // Use Gemini 1.5 Flash for vision + structured output
     const model = genAI.getGenerativeModel({
-      model: 'gemini-pro-vision',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         temperature: 0.1, // Low temperature for consistent extraction
         maxOutputTokens: 2048,
@@ -192,7 +192,7 @@ export function validateExtractedData(data) {
  */
 export async function testGeminiConnection() {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const result = await model.generateContent('Hello, test connection');
     const response = await result.response;
     console.log('Gemini API test successful:', response.text().substring(0, 50));

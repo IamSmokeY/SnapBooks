@@ -86,7 +86,7 @@ Send documents back to user
 ## 📦 Tech Stack
 
 - **Bot Framework:** Telegraf.js
-- **AI/OCR:** Gemini 2.0 Flash (Vision API)
+- **AI/OCR:** Gemini 3  Flash (Vision API)
 - **PDF Generation:** Puppeteer + HTML templates
 - **Database:** Firestore
 - **XML Builder:** xmlbuilder2

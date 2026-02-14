@@ -522,7 +522,7 @@ function BotSimulationView({
               <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A]">
                 <div className="text-3xl mb-2">🎯</div>
                 <div className="font-bold text-white mb-1">Accurate</div>
-                <div className="text-xs text-[#86868B]">Powered by Gemini 2.0</div>
+                <div className="text-xs text-[#86868B]">Powered by Gemini 3 </div>
               </div>
             </div>
 

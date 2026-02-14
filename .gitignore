@@ -121,8 +121,10 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -130,6 +132,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+*.pem
+*.key
+*.cert
+*.p12
+**/secrets/
+**/*secret*
+**/*private*
 
 # Spyder project settings
 .spyderproject
@@ -184,10 +193,20 @@ invoices/
 chat_history/
 images/
 
-# Firebase service account keys
+# Firebase & Google Cloud credentials
 *-adminsdk*.json
 *-firebase*.json
 firebase-service-account.json
+service-account*.json
+google-credentials*.json
+gcloud-key*.json
+credentials.json
+
+# API Keys and Tokens
+*_API_KEY*
+*_TOKEN*
+*_SECRET*
+.api-keys
 
 # Test output files
 pipeline-output-*.pdf

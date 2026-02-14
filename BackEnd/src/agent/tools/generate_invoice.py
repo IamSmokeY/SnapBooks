@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 from src.config import ROOT_DIR
 from src.models import InvoiceData, ToolResponse
+from src.firebase import save_invoice, upload_file
+from src.logger import log
 
 INVOICES_DIR = ROOT_DIR / "invoices"
 INVOICES_DIR.mkdir(exist_ok=True)
@@ -13,6 +15,8 @@ INVOICES_DIR.mkdir(exist_ok=True)
 
 class GenerateInvoiceRequest(BaseModel):
     invoice_data: InvoiceData = Field(..., description="Extracted invoice data")
+    user_id: str | None = Field(None, description="Telegram user ID for tracking")
+    save_to_firebase: bool = Field(True, description="Whether to upload to Firebase Storage and Firestore")
 
 
 # ── Number to Indian English words ──────────────────────────────────────────
@@ -476,7 +480,65 @@ async def generate_invoice_pdf(request: GenerateInvoiceRequest) -> ToolResponse:
     filepath = INVOICES_DIR / filename
     pdf.output(str(filepath))
 
+    pdf_url = None
+    firestore_saved = False
+
+    # Upload to Firebase if enabled
+    if request.save_to_firebase:
+        try:
+            # Read PDF bytes for upload
+            with open(filepath, 'rb') as f:
+                pdf_bytes = f.read()
+
+            # Upload to Firebase Storage
+            storage_path = f"invoices/pdfs/{inv_part}.pdf"
+            pdf_url = await upload_file(pdf_bytes, storage_path, 'application/pdf')
+
+            # Save metadata to Firestore
+            invoice_metadata = {
+                "invoice_number": invoice_number,
+                "customer_name": buyer.name,
+                "date": data.date,
+                "document_type": data.document_type,
+                "subtotal": data.subtotal,
+                "tax_type": data.tax_type,
+                "total_tax_amount": data.total_tax_amount,
+                "grand_total": data.total_amount,
+                "pdf_url": pdf_url,
+                "user_id": request.user_id,
+                "business_gstin": seller.gstin,
+                "customer_gstin": buyer.gstin,
+                "business_state": seller.state_name,
+                "customer_state": buyer.state_name,
+                "items": [
+                    {
+                        "name": item.description,
+                        "quantity": item.quantity,
+                        "unit": item.unit,
+                        "rate": item.rate,
+                        "amount": item.amount,
+                        "gst_rate": item.tax_rate or 0,
+                        "hsn_code": item.hsn_code,
+                    }
+                    for item in data.items
+                ],
+            }
+
+            await save_invoice(inv_part, invoice_metadata)
+            firestore_saved = True
+            log("invoice_uploaded_to_firebase", invoice_id=inv_part, pdf_url=pdf_url)
+
+        except Exception as e:
+            log("firebase_upload_error", error=str(e), invoice_id=inv_part)
+            # Don't fail the whole operation if Firebase upload fails
+
+    response_msg = f"Invoice PDF generated: {filepath}"
+    if pdf_url:
+        response_msg += f"\nFirebase URL: {pdf_url}"
+    if firestore_saved:
+        response_msg += f"\nSaved to Firestore: {inv_part}"
+
     return ToolResponse(
-        response=f"Invoice PDF generated: {filepath}",
+        response=response_msg,
         status="success",
     )

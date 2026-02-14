@@ -1,174 +1,113 @@
-# SnapBooks - Telegram AI Accountant
+# SnapBooks — Telegram AI Accountant
 
 > Convert handwritten bills to GST-compliant invoices in 30 seconds
 
 A Telegram bot that uses Gemini Vision AI to extract data from handwritten "kata parchi" (bill notes) and generates professional invoices, Tally XML, and manages inventory.
 
-## 🎯 Project Status
+## Features
 
-**Built for Gemini Hackathon**
+- **📸 Photo OCR** — Send a photo of any handwritten bill, weighbridge slip, or invoice
+- **🤖 Gemini Vision AI** — Reads Hindi, English, and mixed handwriting with per-field confidence
+- **📄 PDF Generation** — Professional invoices, purchase orders, and delivery challans via Puppeteer
+- **📊 Tally XML** — Import-ready XML for Tally ERP (Sales/Purchase vouchers with inventory entries)
+- **💰 GST Calculation** — Auto HSN lookup, CGST/SGST/IGST split, intrastate/interstate detection
+- **📑 Multi-document** — Detects multiple documents in one photo, identifies their relationship
+- **☁️ Firebase** — Optional Firestore storage + Firebase Storage for PDF/XML archival
+- **🌐 REST API** — Express API for dashboard integration (`/api/invoices`, `/api/stats`)
 
-### ✅ Completed (Hour 1)
-- [x] Telegraf.js bot scaffold
-- [x] `/start` and `/help` commands
-- [x] Photo upload handler
-- [x] Gemini Vision API client
-- [x] Image-to-JSON extraction
-- [x] Error handling with try/catch
-- [x] Confirmation flow with inline keyboards
-
-### 🚧 In Progress
-- [ ] PDF generation with Puppeteer
-- [ ] GST calculation engine
-- [ ] Tally XML builder
-- [ ] Inventory management
-- [ ] Full pipeline integration
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 20+
-- Telegram Bot Token (from @BotFather)
-- Gemini API Key
-
-### Installation
+## Quick Start
 
 ```bash
-# Install dependencies
+# Clone
+git clone https://github.com/IamSmokeY/SnapBooks.git
+cd SnapBooks
+
+# Install
 npm install
 
-# Configure environment variables
-# Edit .env with your tokens (already configured)
+# Configure
+cp .env.example .env
+# Fill in TELEGRAM_BOT_TOKEN and GEMINI_API_KEY
 
-# Start the bot
-npm start
-
-# Or for development with auto-reload
-npm run dev
+# Run
+npm start        # Start Telegram bot
+npm run api      # Start REST API (port 3004)
+npm run dev      # Start bot with file watching
 ```
 
-### Testing the Bot
+## Architecture
 
-1. Open Telegram and search for `@snapbooks_bot`
-2. Send `/start` to initialize
-3. Take a photo of a handwritten bill
-4. Send it to the bot
-5. Bot will extract data and show confirmation
+```
+Photo → Telegraf Bot → Gemini Vision OCR → Schema Adapter → GST Engine → PDF + XML → Telegram
+                                                                      ↘ Firebase (optional)
+```
 
-## 📋 Bot Commands
+### Core Files
+
+| File | Purpose |
+|------|---------|
+| `src/bot.js` | Telegraf bot — photo handler, commands, inline keyboards |
+| `src/geminiClient.js` | Gemini Vision API wrapper with retry/timeout |
+| `src/schemaAdapter.js` | Bridges v2 OCR output to pipeline flat format |
+| `src/gstEngine.js` | HSN lookup, GST calculation, invoice validation |
+| `src/pdfGenerator.js` | Puppeteer HTML→PDF with template system |
+| `src/tallyXml.js` | Tally-compatible XML voucher generation |
+| `src/pipeline.js` | End-to-end orchestration with parallel generation |
+| `src/firebaseClient.js` | Firebase Admin SDK — Firestore + Storage |
+| `src/api.js` | Express REST API for frontend dashboard |
+
+### Templates
+
+| Template | Use |
+|----------|-----|
+| `templates/invoice.html` | Sales invoice (blue theme) |
+| `templates/purchase-order.html` | Purchase order (purple theme) |
+| `templates/delivery-challan.html` | Delivery challan (orange theme) |
+
+## Bot Commands
 
 | Command | Description |
 |---------|-------------|
-| `/start` | Welcome message and quick start guide |
-| `/help` | Detailed usage instructions |
-| `/inventory` | View current stock levels (coming soon) |
-| `/ledger <name>` | Check customer outstanding (coming soon) |
-| `/analytics` | Today's sales summary (coming soon) |
+| `/start` | Welcome message + usage guide |
+| `/help` | Photo tips + supported formats |
+| `/inventory` | Stock levels (coming soon) |
+| `/ledger` | Customer outstanding (coming soon) |
+| `/analytics` | Daily summary (coming soon) |
 
-## 🏗️ Architecture
+## Environment Variables
 
-```
-User sends photo
-    ↓
-Telegraf Bot receives image
-    ↓
-Gemini Vision API extracts data
-    ↓
-User confirms with inline keyboard
-    ↓
-Generate PDF + Tally XML
-    ↓
-Update Firestore inventory
-    ↓
-Send documents back to user
-```
+```env
+TELEGRAM_BOT_TOKEN=       # From @BotFather
+GEMINI_API_KEY=           # From Google AI Studio
+GEMINI_MODEL=gemini-2.5-flash
 
-## 📦 Tech Stack
+BUSINESS_NAME=ABC Manufacturing Pvt Ltd
+BUSINESS_ADDRESS=Plot 45, MIDC, Pune 411001
+BUSINESS_GSTIN=27AABCU9603R1ZM
+BUSINESS_STATE=Maharashtra
 
-- **Bot Framework:** Telegraf.js
-- **AI/OCR:** Gemini 3  Flash (Vision API)
-- **PDF Generation:** Puppeteer + HTML templates
-- **Database:** Firestore
-- **XML Builder:** xmlbuilder2
-- **Server:** Railway/Render (persistent Node.js)
-
-## 👥 Team
-
-- **Chetas:** AI & Prompt Engineering + Demo Lead
-- **Bck (You):** Fullstack - Bot Core & Document Generation
-- **SmokeY JokeR:** Database & DevOps
-- **popsause:** Frontend/UI - Templates & Pitch
-
-## 📁 Project Structure
-
-```
-snapbooks/
-├── src/
-│   ├── bot.js                 ✅ Main bot entry point
-│   ├── geminiClient.js        ✅ Gemini Vision API wrapper
-│   ├── confirmationFlow.js    🚧 Inline keyboard handling
-│   ├── pipeline.js            🚧 End-to-end orchestration
-│   ├── pdfGenerator.js        🚧 Puppeteer PDF renderer
-│   ├── gstEngine.js           🚧 Tax calculation
-│   ├── tallyXml.js            🚧 XML builder
-│   ├── inventory.js           🚧 Stock management
-│   ├── db.js                  🚧 Firestore client
-│   └── commands/
-│       ├── ledger.js          🚧 Customer ledger query
-│       └── analytics.js       🚧 Daily analytics
-├── templates/                 📄 HTML templates for PDFs
-├── data/                      📊 Seed data & HSN codes
-├── scripts/                   🔧 Utility scripts
-├── .env                       ⚙️ Configuration
-└── package.json
+# Optional — Firebase
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-key.json
+API_PORT=3004
 ```
 
-## 🔑 Environment Variables
-
-See `.env` file (already configured with tokens)
-
-## 🧪 Testing
+## Testing
 
 ```bash
-# Test Gemini API connection
-node -e "import('./src/geminiClient.js').then(m => m.testGeminiConnection())"
-
-# Start bot in development mode
-npm run dev
+node test-adapter.js       # Schema adapter + GST integration (no API needed)
+node test-bot.js           # Bot + Gemini connectivity check
+node test-e2e.js           # End-to-end with real image
+node test-firebase.js      # Firebase connectivity
 ```
 
-## 📝 Sample Data Format
+## Tech Stack
 
-**Expected Gemini Output:**
-```json
-{
-  "supplier_or_customer": "Ravi Transport",
-  "items": [
-    {
-      "name": "Plastic Chairs (कुर्सी)",
-      "quantity": 100,
-      "unit": "pcs",
-      "rate": 500,
-      "amount": 50000
-    }
-  ],
-  "date": "14/02/2026",
-  "notes": "Deliver to warehouse",
-  "confidence": 0.95
-}
-```
+Telegraf.js · Gemini 2.5 Flash · Puppeteer · Firebase · Express · xmlbuilder2
 
-## 🎯 Next Steps (Hour 2-5)
+## Team
 
-1. **Hour 2:** PDF generation + GST engine + confirmation flow
-2. **Hour 3:** Tally XML + inventory + ledger/analytics commands
-3. **Hour 4:** Integration testing + bug fixes
-4. **Hour 5:** Demo polish + rehearsal
+Built for the Gemini Hackathon by Chetas, Bck, SmokeY JokeR, and popsause.
 
-## 📞 Support
+## License
 
-For issues or questions, contact the team lead.
-
-## 📄 License
-
-MIT License - Built for Gemini Hackathon 2026
+MIT

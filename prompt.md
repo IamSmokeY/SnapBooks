@@ -1,6 +1,6 @@
 # SnapBooks — Gemini System Prompt v2
 
-> **Model:** Gemini 3 Pro  
+> **Model:** Gemini 2.5 Flash (or any Gemini Vision model)  
 > **Settings:** `thinking_level: "high"` | `media_resolution: "high"`  
 > **Schema enforcement:** None (prompt-only, portable across AI Studio / API / Gemini App)  
 > **Tested on:** Weighbridge slips (handwritten + printed), formal GST e-invoices, multi-document photos  

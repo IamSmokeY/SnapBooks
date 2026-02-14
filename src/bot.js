@@ -239,11 +239,17 @@ bot.on('callback_query', async (ctx) => {
     await ctx.answerCbQuery(`Creating ${docConfig.label}...`);
     await ctx.reply(`⚡ Generating ${docConfig.label}...`);
 
-    // Run pipeline with the extracted data (skip re-OCR)
-    const result = await processInvoicePipeline(session.imageBuffer, docConfig.type, null, {
-      userId: userId.toString(),
-      saveToFirebase: true
-    });
+    // Run pipeline with the extracted data (skip re-OCR by passing extractedData)
+    const result = await processInvoicePipeline(
+      session.imageBuffer,
+      docConfig.type,
+      null, // customerState
+      {
+        extractedData: session.extractedData,
+        userId: userId.toString(),
+        saveToFirebase: true
+      }
+    );
     await sendResultsToTelegram(ctx, result);
 
     // Clear session

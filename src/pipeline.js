@@ -6,6 +6,16 @@ import { saveInvoice, uploadFile } from './firebaseClient.js';
 import { writeFileSync } from 'fs';
 
 /**
+ * Escape special Telegram Markdown characters in user-supplied text
+ * @param {string} text
+ * @returns {string} Escaped text safe for Telegram Markdown
+ */
+function escapeMarkdown(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+}
+
+/**
  * Complete pipeline: Image → OCR → GST → PDF + XML
  * @param {Buffer} imageBuffer - Image buffer from Telegram
  * @param {string} documentType - 'sales_invoice', 'purchase_order', 'delivery_challan'
@@ -13,6 +23,7 @@ import { writeFileSync } from 'fs';
  * @param {Object} options - Pipeline options
  * @param {number} options.timeout - Overall timeout in milliseconds (default: 30000)
  * @param {number} options.ocrTimeout - OCR timeout (default: 25000)
+ * @param {Object} options.extractedData - Pre-extracted data to skip OCR (from previous pass)
  * @returns {Promise<Object>} { invoice, pdfBuffer, xmlString, metadata }
  */
 export async function processInvoicePipeline(imageBuffer, documentType = 'sales_invoice', customerState = null, options = {}) {
@@ -29,7 +40,7 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
   try {
     // Wrap entire pipeline in timeout
     return await Promise.race([
-      executePipeline(imageBuffer, documentType, customerState, metadata, { ocrTimeout }),
+      executePipeline(imageBuffer, documentType, customerState, metadata, { ocrTimeout, extractedData: options.extractedData }),
       new Promise((_, reject) =>
         setTimeout(() => {
           const elapsed = Date.now() - startTime;
@@ -58,34 +69,49 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
  * @private
  */
 async function executePipeline(imageBuffer, documentType, customerState, metadata, options) {
-  const { ocrTimeout } = options;
+  const { ocrTimeout, extractedData: preExtracted } = options;
   const startTime = Date.now();
 
   try {
     // Validate inputs
-    if (!imageBuffer || !Buffer.isBuffer(imageBuffer)) {
-      throw new Error('Invalid image buffer');
+    if (!preExtracted) {
+      // Only need imageBuffer if we're running OCR
+      if (!imageBuffer || !Buffer.isBuffer(imageBuffer)) {
+        throw new Error('Invalid image buffer');
+      }
+      if (imageBuffer.length === 0) {
+        throw new Error('Empty image buffer');
+      }
+      if (imageBuffer.length > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('Image too large (max 10MB)');
+      }
     }
-    if (imageBuffer.length === 0) {
-      throw new Error('Empty image buffer');
+
+    // Step 1: Extract data with Gemini Vision OCR (or use pre-extracted)
+    let extractedData;
+    if (preExtracted) {
+      console.log('📸 Step 1: Using pre-extracted data (skipping OCR)...');
+      extractedData = preExtracted;
+      metadata.steps.push({
+        step: 'OCR',
+        duration: 0,
+        confidence: extractedData.confidence,
+        itemsFound: extractedData.items?.length || 0,
+        skipped: true
+      });
+      console.log('✅ OCR skipped (data already available)');
+    } else {
+      console.log('📸 Step 1: Extracting data from image...');
+      const stepStart = Date.now();
+      extractedData = await extractDataFromImage(imageBuffer, { timeout: ocrTimeout });
+      metadata.steps.push({
+        step: 'OCR',
+        duration: Date.now() - stepStart,
+        confidence: extractedData.confidence,
+        itemsFound: extractedData.items?.length || 0
+      });
+      console.log(`✅ OCR complete (${metadata.steps[0].duration}ms, confidence: ${extractedData.confidence})`);
     }
-    if (imageBuffer.length > 10 * 1024 * 1024) { // 10MB limit
-      throw new Error('Image too large (max 10MB)');
-    }
-    // Step 1: Extract data with Gemini Vision OCR
-    console.log('📸 Step 1: Extracting data from image...');
-    const stepStart = Date.now();
-
-    const extractedData = await extractDataFromImage(imageBuffer, { timeout: ocrTimeout });
-
-    metadata.steps.push({
-      step: 'OCR',
-      duration: Date.now() - stepStart,
-      confidence: extractedData.confidence,
-      itemsFound: extractedData.items?.length || 0
-    });
-
-    console.log(`✅ OCR complete (${metadata.steps[0].duration}ms, confidence: ${extractedData.confidence})`);
 
     // Step 2: Calculate GST and invoice totals
     console.log('💰 Step 2: Calculating GST and totals...');
@@ -286,20 +312,23 @@ export async function sendResultsToTelegram(ctx, result) {
   const invoice = result.invoice;
 
   // Success message
+  const gstRates = [...new Set(invoice.items.map(i => i.gst_rate))];
+  const gstRateLabel = gstRates.length === 1 ? `${gstRates[0]}` : 'Mixed';
+
   const message = `
 ✅ *Invoice ${invoice.invoice_number || 'N/A'} Created!*
 
-👤 *Customer:* ${invoice.customer_name}
+👤 *Customer:* ${escapeMarkdown(invoice.customer_name)}
 📅 *Date:* ${invoice.date}
 📍 *Tax Type:* ${invoice.tax_type.toUpperCase()}
 
 *Items:* ${invoice.items.length}
-${invoice.items.map((item, i) => `${i + 1}. ${item.name} - ${item.quantity} ${item.unit} @ ₹${item.rate}`).join('\n')}
+${invoice.items.map((item, i) => `${i + 1}. ${escapeMarkdown(item.name)} - ${item.quantity} ${item.unit} @ ₹${item.rate} (${item.gst_rate}% GST)`).join('\n')}
 
 💰 *Subtotal:* ₹${invoice.subtotal.toLocaleString('en-IN')}
 ${invoice.tax_type === 'intrastate' ?
-  `📊 *CGST (${invoice.items[0]?.gst_rate / 2 || 9}%):* ₹${invoice.cgst.toLocaleString('en-IN')}\n📊 *SGST (${invoice.items[0]?.gst_rate / 2 || 9}%):* ₹${invoice.sgst.toLocaleString('en-IN')}` :
-  `📊 *IGST (${invoice.items[0]?.gst_rate || 18}%):* ₹${invoice.igst.toLocaleString('en-IN')}`
+  `📊 *CGST:* ₹${invoice.cgst.toLocaleString('en-IN')}\n📊 *SGST:* ₹${invoice.sgst.toLocaleString('en-IN')}` :
+  `📊 *IGST:* ₹${invoice.igst.toLocaleString('en-IN')}`
 }
 💵 *Grand Total:* ₹${invoice.grand_total.toLocaleString('en-IN')}
 

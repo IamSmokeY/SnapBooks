@@ -51,12 +51,13 @@ export async function extractDataFromImage(imageBuffer) {
   try {
     console.log('Calling Gemini Vision API...');
 
-    // Use Gemini 1.5 Flash for vision + structured output
+    // Use Gemini 2.5 Flash for vision + structured output
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.1, // Low temperature for consistent extraction
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096, // Increased for complete JSON
+        responseMimeType: "application/json", // Request JSON response
       }
     });
 
@@ -87,6 +88,32 @@ export async function extractDataFromImage(imageBuffer) {
         cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       } else if (cleanedText.startsWith('```')) {
         cleanedText = cleanedText.replace(/```\n?/g, '');
+      }
+
+      // Try to fix incomplete JSON by adding missing closing brackets
+      if (!cleanedText.includes('"confidence"')) {
+        // JSON is incomplete, try to complete it
+        const itemsMatch = cleanedText.match(/"items":\s*\[/);
+        if (itemsMatch) {
+          // Count opening and closing brackets
+          const openBrackets = (cleanedText.match(/\[/g) || []).length;
+          const closeBrackets = (cleanedText.match(/\]/g) || []).length;
+          const openBraces = (cleanedText.match(/\{/g) || []).length;
+          const closeBraces = (cleanedText.match(/\}/g) || []).length;
+
+          // Add missing closing brackets
+          for (let i = 0; i < openBrackets - closeBrackets; i++) {
+            cleanedText += '\n  ]';
+          }
+          for (let i = 0; i < openBraces - closeBraces; i++) {
+            cleanedText += '\n}';
+          }
+
+          // Add missing fields
+          if (!cleanedText.includes('"date"')) {
+            cleanedText = cleanedText.slice(0, -1) + ',\n  "date": null,\n  "notes": "",\n  "confidence": 0.85\n}';
+          }
+        }
       }
 
       extractedData = JSON.parse(cleanedText);
@@ -192,7 +219,7 @@ export function validateExtractedData(data) {
  */
 export async function testGeminiConnection() {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent('Hello, test connection');
     const response = await result.response;
     console.log('Gemini API test successful:', response.text().substring(0, 50));

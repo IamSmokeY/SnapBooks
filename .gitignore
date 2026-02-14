@@ -210,3 +210,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Test output files
+pipeline-output-*.pdf
+pipeline-output-*.xml
+pipeline-output-*.json
+test-invoice-*.pdf
+test-invoice-*.html

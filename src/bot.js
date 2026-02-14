@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 import { extractDataFromImage } from './geminiClient.js';
+import { formatForTelegram } from './schemaAdapter.js';
 import { processInvoicePipeline, sendResultsToTelegram } from './pipeline.js';
 
 dotenv.config();
@@ -30,13 +31,9 @@ I'm your AI Accountant assistant. I can convert handwritten bills into professio
 ⚡ I'll extract the data and generate:
   • Professional Invoice PDF
   • Tally XML (ready to import)
-  • Inventory updates
 
-*Available Commands:*
+*Commands:*
 /help - Show detailed instructions
-/inventory - View current stock levels
-/ledger <name> - Check customer outstanding
-/analytics - Today's sales summary
 
 *Ready to get started?*
 Send me a photo of your first bill! 📄
@@ -63,16 +60,10 @@ bot.command('help', async (ctx) => {
 
 *What I can read:*
 ✅ Hindi and English text
-✅ Handwritten numbers
-✅ Common abbreviations (pcs, kg, dz, ctn)
-✅ Mixed Hindi-English notes
-
-*Commands:*
-/start - Welcome message
-/help - This help guide
-/inventory - Current stock levels
-/ledger <customer_name> - Outstanding amount
-/analytics - Today's summary
+✅ Handwritten numbers & printed forms
+✅ Weighbridge slips, katas, invoices
+✅ Multiple documents in one photo
+✅ Common abbreviations (pcs, kg, dz, ctn, MT)
 
 *Example usage:*
 Just photograph a kata saying "Ravi ko 100 kursi @ 500" and send it to me!
@@ -86,6 +77,19 @@ Contact your team administrator.
     console.error('Error in /help handler:', error);
     ctx.reply('Failed to show help message. Please try /help again.');
   }
+});
+
+// Stub commands — graceful responses for unbuilt features
+bot.command('inventory', async (ctx) => {
+  await ctx.replyWithMarkdown('📦 *Inventory tracking coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
+});
+
+bot.command('ledger', async (ctx) => {
+  await ctx.replyWithMarkdown('📒 *Ledger feature coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
+});
+
+bot.command('analytics', async (ctx) => {
+  await ctx.replyWithMarkdown('📊 *Analytics feature coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
 });
 
 // Photo handler - main OCR pipeline entry point
@@ -122,18 +126,23 @@ bot.on('photo', async (ctx) => {
       ctx.chat.id,
       processingMsg.message_id,
       null,
-      '🤖 Reading handwritten text with AI...'
+      '🤖 Reading document with AI...'
     );
 
     const extractedData = await extractDataFromImage(imageBuffer);
 
-    console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
+    console.log('Extracted data:', JSON.stringify(extractedData, null, 2).substring(0, 500));
 
     // Delete processing message
     await ctx.telegram.deleteMessage(ctx.chat.id, processingMsg.message_id);
 
-    // Format extracted data for user confirmation
-    const confirmationMessage = formatExtractedData(extractedData);
+    // Format extracted data for user confirmation using schema adapter
+    const parsed = extractedData._parsed || {
+      primary: extractedData,
+      all: [extractedData],
+      multiDocument: { count: 1, relationship: 'single', link_note: null }
+    };
+    const confirmationMessage = formatForTelegram(parsed);
 
     // Store data in session for callback handler
     const userId = ctx.from.id;
@@ -155,7 +164,6 @@ bot.on('photo', async (ctx) => {
             { text: '🚚 Delivery Challan', callback_data: `confirm_challan` }
           ],
           [
-            { text: '✏️ Edit Data', callback_data: `edit` },
             { text: '❌ Cancel', callback_data: `cancel` }
           ]
         ]
@@ -165,15 +173,22 @@ bot.on('photo', async (ctx) => {
   } catch (error) {
     console.error('Error in photo handler:', error);
 
+    // Try to delete processing message
+    try {
+      // Can't reliably get processingMsg here if error was early
+    } catch (_) {}
+
     // User-friendly error messages based on error type
     let errorMessage = '😕 *Couldn\'t process this image.*\n\n';
 
-    if (error.message.includes('confidence')) {
+    if (error.message.includes('confidence') || error.message.includes('unclear')) {
       errorMessage += `*Issue:* The handwriting is unclear.\n\n*Tips:*\n• Hold phone steady\n• Ensure good lighting\n• Avoid shadows and blur\n• Capture the full page\n\nPlease try again with a clearer photo.`;
     } else if (error.message.includes('timeout') || error.message.includes('API')) {
-      errorMessage += `⏳ *Processing is taking longer than usual.*\n\nOur AI is working on it. Please wait 10 seconds and try again if this persists.`;
+      errorMessage += `⏳ *Processing is taking longer than usual.*\n\nPlease wait 10 seconds and try again.`;
+    } else if (error.message.includes('No data') || error.message.includes('No items')) {
+      errorMessage += `*Issue:* Could not find bill data in this image.\n\nMake sure the photo shows a handwritten bill, weighbridge slip, or invoice.`;
     } else {
-      errorMessage += `*Error:* ${error.message}\n\nPlease try again or contact support if the issue continues.`;
+      errorMessage += `*Error:* ${error.message}\n\nPlease try again or contact support.`;
     }
 
     ctx.replyWithMarkdown(errorMessage);
@@ -196,50 +211,35 @@ bot.on('callback_query', async (ctx) => {
       return;
     }
 
-    if (callbackData === 'confirm_sales') {
-      await ctx.answerCbQuery('Creating Sales Invoice...');
-      await ctx.reply('⚡ Generating Sales Invoice...');
-
-      // Run pipeline
-      const result = await processInvoicePipeline(session.imageBuffer, 'sales_invoice');
-      await sendResultsToTelegram(ctx, result);
-
-      // Clear session
-      userSessions.delete(userId);
-
-    } else if (callbackData === 'confirm_purchase') {
-      await ctx.answerCbQuery('Creating Purchase Order...');
-      await ctx.reply('⚡ Generating Purchase Order...');
-
-      // Run pipeline
-      const result = await processInvoicePipeline(session.imageBuffer, 'purchase_order');
-      await sendResultsToTelegram(ctx, result);
-
-      // Clear session
-      userSessions.delete(userId);
-
-    } else if (callbackData === 'confirm_challan') {
-      await ctx.answerCbQuery('Creating Delivery Challan...');
-      await ctx.reply('⚡ Generating Delivery Challan...');
-
-      // Run pipeline
-      const result = await processInvoicePipeline(session.imageBuffer, 'delivery_challan');
-      await sendResultsToTelegram(ctx, result);
-
-      // Clear session
-      userSessions.delete(userId);
-
-    } else if (callbackData === 'edit') {
-      await ctx.answerCbQuery('Edit feature coming soon...');
-      await ctx.reply('✏️ Edit feature will be available soon. For now, please send a clearer photo.');
-
-    } else if (callbackData === 'cancel') {
+    if (callbackData === 'cancel') {
       await ctx.answerCbQuery('Cancelled');
       await ctx.reply('❌ Operation cancelled. Send a new photo when ready.');
-
-      // Clear session
       userSessions.delete(userId);
+      return;
     }
+
+    // Map callback to document type
+    const docTypeMap = {
+      'confirm_sales': { type: 'sales_invoice', label: 'Sales Invoice' },
+      'confirm_purchase': { type: 'purchase_order', label: 'Purchase Order' },
+      'confirm_challan': { type: 'delivery_challan', label: 'Delivery Challan' }
+    };
+
+    const docConfig = docTypeMap[callbackData];
+    if (!docConfig) {
+      await ctx.answerCbQuery('Unknown action');
+      return;
+    }
+
+    await ctx.answerCbQuery(`Creating ${docConfig.label}...`);
+    await ctx.reply(`⚡ Generating ${docConfig.label}...`);
+
+    // Run pipeline with the extracted data (skip re-OCR)
+    const result = await processInvoicePipeline(session.imageBuffer, docConfig.type);
+    await sendResultsToTelegram(ctx, result);
+
+    // Clear session
+    userSessions.delete(userId);
 
   } catch (error) {
     console.error('Error in callback handler:', error);
@@ -248,16 +248,32 @@ bot.on('callback_query', async (ctx) => {
   }
 });
 
+// Document handler — for PDFs sent directly
+bot.on('document', async (ctx) => {
+  try {
+    const doc = ctx.message.document;
+    if (doc.mime_type === 'application/pdf' || doc.file_name?.endsWith('.pdf')) {
+      await ctx.reply('📄 PDF received! Currently I work best with *photos* of documents.\n\nPlease send a photo (camera or gallery) instead.', {
+        parse_mode: 'Markdown'
+      });
+    } else {
+      await ctx.reply('📸 Please send me a *photo* of your handwritten bill.\n\nIf you need help, type /help', {
+        parse_mode: 'Markdown'
+      });
+    }
+  } catch (error) {
+    console.error('Error in document handler:', error);
+  }
+});
+
 // Text message handler (catch-all for unknown commands)
 bot.on('text', async (ctx) => {
   try {
-    // Skip if it's a command (handled by other handlers)
     if (ctx.message.text.startsWith('/')) {
       await ctx.reply('❓ Unknown command. Type /help to see available commands.');
       return;
     }
 
-    // Suggest sending a photo
     await ctx.reply('📸 Please send me a *photo* of your handwritten bill.\n\nIf you need help, type /help', {
       parse_mode: 'Markdown'
     });
@@ -265,43 +281,6 @@ bot.on('text', async (ctx) => {
     console.error('Error in text handler:', error);
   }
 });
-
-// Helper function to format extracted data
-function formatExtractedData(data) {
-  const confidenceEmoji = data.confidence >= 0.85 ? '🎯' : data.confidence >= 0.60 ? '⚠️' : '❗';
-  const confidenceWarning = data.confidence < 0.85
-    ? '\n\n⚠️ *Please verify the data carefully*'
-    : '';
-
-  let message = `📋 *Extracted Data*\n\n`;
-  message += `👤 ${data.supplier_or_customer || 'Unknown'}\n`;
-  message += `📅 ${data.date || 'Not specified'}\n\n`;
-
-  if (data.items && data.items.length > 0) {
-    data.items.forEach((item, index) => {
-      message += `┌─────────────────────────────\n`;
-      message += `│ *Item ${index + 1}:* ${item.name}\n`;
-      message += `│ *Qty:* ${item.quantity} ${item.unit}\n`;
-      if (item.rate > 0) {
-        message += `│ *Rate:* ₹${item.rate}/${item.unit}\n`;
-      }
-      if (item.amount > 0) {
-        message += `│ *Amount:* ₹${item.amount.toLocaleString('en-IN')}\n`;
-      }
-      message += `└─────────────────────────────\n\n`;
-    });
-  }
-
-  if (data.notes) {
-    message += `📝 *Notes:* ${data.notes}\n\n`;
-  }
-
-  message += `${confidenceEmoji} *Confidence:* ${Math.round(data.confidence * 100)}%`;
-  message += confidenceWarning;
-  message += `\n\n*Select document type and confirm:*`;
-
-  return message;
-}
 
 // Graceful shutdown
 process.once('SIGINT', () => {

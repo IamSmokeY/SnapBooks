@@ -1,0 +1,333 @@
+{
+  "company": {
+    "name": "SHREE GANESH ENTERPRISES",
+    "address": "No. 45/2, Hosur Road, Industrial Area",
+    "city": "Bengaluru - 560068",
+    "udyamRegistration": "UDYAM-KA-12-0045678 (Small)",
+    "gstin": "29AABCS1234F1Z5",
+    "stateName": "Karnataka",
+    "stateCode": "29",
+    "cin": "U51909KA2018PTC112345",
+    "contact": ["9845012345", "9876543210"],
+    "email": "info@ganeshenterprises.com",
+    "pan": "AABCS1234F"
+  },
+  "customers": [
+    {
+      "id": "CUST001",
+      "name": "Skyline Retail Private Limited",
+      "address": "Plot No. 23, KIADB Industrial Area, Bommasandra, Bengaluru - 560099",
+      "gstin": "29AACCS5678G1Z8",
+      "stateName": "Karnataka",
+      "stateCode": "29"
+    },
+    {
+      "id": "CUST002",
+      "name": "Golden Trading Company",
+      "address": "Shop No. 45, Commercial Street, M.G. Road, Bengaluru - 560001",
+      "gstin": "29AADCG9876H1Z2",
+      "stateName": "Karnataka",
+      "stateCode": "29"
+    },
+    {
+      "id": "CUST003",
+      "name": "Maharashtra Suppliers & Distributors",
+      "address": "Warehouse 12, MIDC Taloja Industrial Area, Navi Mumbai - 410208",
+      "gstin": "27AAECM4567J1ZP",
+      "stateName": "Maharashtra",
+      "stateCode": "27"
+    }
+  ],
+  "products": [
+    {
+      "id": "PROD001",
+      "name": "Plastic Chair (Premium)",
+      "nameHindi": "प्लास्टिक कुर्सी",
+      "hsnCode": "94036090",
+      "gstRate": 18,
+      "unit": "PCS"
+    },
+    {
+      "id": "PROD002",
+      "name": "LED Bulb 9W",
+      "nameHindi": "एलईडी बल्ब",
+      "hsnCode": "85395000",
+      "gstRate": 18,
+      "unit": "PCS"
+    },
+    {
+      "id": "PROD003",
+      "name": "Steel Pipe (MS)",
+      "nameHindi": "स्टील पाइप",
+      "hsnCode": "73063090",
+      "gstRate": 18,
+      "unit": "KG"
+    },
+    {
+      "id": "PROD004",
+      "name": "Cotton Fabric",
+      "nameHindi": "सूती कपड़ा",
+      "hsnCode": "52083900",
+      "gstRate": 5,
+      "unit": "MTR"
+    },
+    {
+      "id": "PROD005",
+      "name": "Wooden Table",
+      "nameHindi": "लकड़ी की मेज",
+      "hsnCode": "94036030",
+      "gstRate": 18,
+      "unit": "PCS"
+    }
+  ],
+  "invoices": [
+    {
+      "invoiceNo": "INV/2026/001",
+      "dated": "08-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST001",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/SKY/2026/045",
+      "referenceDate": "05-Feb-26",
+      "modeOfPayment": "30 Days",
+      "motorVehicleNo": "KA01AB1234",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD001",
+          "quantity": 100,
+          "rate": 450
+        },
+        {
+          "productId": "PROD002",
+          "quantity": 200,
+          "rate": 120
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/002",
+      "dated": "09-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST003",
+      "placeOfSupply": "Maharashtra",
+      "referenceNo": "PO/MSD/2026/078",
+      "referenceDate": "07-Feb-26",
+      "modeOfPayment": "45 Days",
+      "motorVehicleNo": "KA02BC5678",
+      "destination": "Navi Mumbai",
+      "items": [
+        {
+          "productId": "PROD003",
+          "quantity": 500,
+          "rate": 85
+        },
+        {
+          "productId": "PROD005",
+          "quantity": 25,
+          "rate": 3500
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/003",
+      "dated": "09-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST002",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/GT/2026/012",
+      "referenceDate": "08-Feb-26",
+      "modeOfPayment": "15 Days",
+      "motorVehicleNo": "KA05MN9012",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD004",
+          "quantity": 1000,
+          "rate": 180
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/004",
+      "dated": "10-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST001",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/SKY/2026/052",
+      "referenceDate": "09-Feb-26",
+      "modeOfPayment": "30 Days",
+      "motorVehicleNo": "KA01CD3456",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD001",
+          "quantity": 150,
+          "rate": 450
+        },
+        {
+          "productId": "PROD002",
+          "quantity": 300,
+          "rate": 120
+        },
+        {
+          "productId": "PROD005",
+          "quantity": 10,
+          "rate": 3500
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/005",
+      "dated": "11-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST003",
+      "placeOfSupply": "Maharashtra",
+      "referenceNo": "PO/MSD/2026/089",
+      "referenceDate": "10-Feb-26",
+      "modeOfPayment": "45 Days",
+      "motorVehicleNo": "KA03EF7890",
+      "destination": "Navi Mumbai",
+      "items": [
+        {
+          "productId": "PROD001",
+          "quantity": 200,
+          "rate": 450
+        },
+        {
+          "productId": "PROD003",
+          "quantity": 300,
+          "rate": 85
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/006",
+      "dated": "11-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST002",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/GT/2026/015",
+      "referenceDate": "10-Feb-26",
+      "modeOfPayment": "15 Days",
+      "motorVehicleNo": "KA06GH2345",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD002",
+          "quantity": 500,
+          "rate": 120
+        },
+        {
+          "productId": "PROD004",
+          "quantity": 800,
+          "rate": 180
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/007",
+      "dated": "12-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST001",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/SKY/2026/056",
+      "referenceDate": "11-Feb-26",
+      "modeOfPayment": "30 Days",
+      "motorVehicleNo": "KA01IJ6789",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD005",
+          "quantity": 30,
+          "rate": 3500
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/008",
+      "dated": "12-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST003",
+      "placeOfSupply": "Maharashtra",
+      "referenceNo": "PO/MSD/2026/095",
+      "referenceDate": "11-Feb-26",
+      "modeOfPayment": "45 Days",
+      "motorVehicleNo": "KA04KL0123",
+      "destination": "Navi Mumbai",
+      "items": [
+        {
+          "productId": "PROD001",
+          "quantity": 250,
+          "rate": 450
+        },
+        {
+          "productId": "PROD002",
+          "quantity": 400,
+          "rate": 120
+        },
+        {
+          "productId": "PROD003",
+          "quantity": 600,
+          "rate": 85
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/009",
+      "dated": "13-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST002",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/GT/2026/018",
+      "referenceDate": "12-Feb-26",
+      "modeOfPayment": "Cash",
+      "motorVehicleNo": "KA07MN4567",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD001",
+          "quantity": 50,
+          "rate": 450
+        },
+        {
+          "productId": "PROD004",
+          "quantity": 500,
+          "rate": 180
+        }
+      ]
+    },
+    {
+      "invoiceNo": "INV/2026/010",
+      "dated": "14-Feb-26",
+      "documentType": "TAX_INVOICE",
+      "customerId": "CUST001",
+      "placeOfSupply": "Karnataka",
+      "referenceNo": "PO/SKY/2026/062",
+      "referenceDate": "13-Feb-26",
+      "modeOfPayment": "30 Days",
+      "motorVehicleNo": "KA01OP8901",
+      "destination": "Bengaluru",
+      "items": [
+        {
+          "productId": "PROD002",
+          "quantity": 1000,
+          "rate": 120
+        },
+        {
+          "productId": "PROD005",
+          "quantity": 20,
+          "rate": 3500
+        }
+      ]
+    }
+  ],
+  "bankDetails": {
+    "accountHolderName": "SHREE GANESH ENTERPRISES",
+    "bankName": "HDFC Bank Ltd",
+    "accountNumber": "50200012345678",
+    "branchAndIFSC": "Koramangala Branch, HDFC0001234"
+  },
+  "declaration": "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+  "jurisdiction": "SUBJECT TO BENGALURU JURISDICTION"
+}

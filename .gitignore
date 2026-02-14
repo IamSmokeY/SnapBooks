@@ -189,7 +189,7 @@ marimo/_lsp/
 __marimo__/
 
 # SnapBooks — runtime data
-invoices/
+/invoices/
 chat_history/
 images/
 

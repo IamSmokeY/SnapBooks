@@ -32,14 +32,14 @@ I'm your AI Accountant assistant. I can convert handwritten bills into professio
   • Professional Invoice PDF
   • Tally XML (ready to import)
 
-*Commands:*
+<b>Commands:</b>
 /help - Show detailed instructions
 
-*Ready to get started?*
+<b>Ready to get started?</b>
 Send me a photo of your first bill! 📄
     `;
 
-    await ctx.replyWithMarkdown(welcomeMessage);
+    await ctx.replyWithHTML(welcomeMessage);
   } catch (error) {
     console.error('Error in /start handler:', error);
     ctx.reply('Failed to show welcome message. Please try /start again.');
@@ -50,29 +50,29 @@ Send me a photo of your first bill! 📄
 bot.command('help', async (ctx) => {
   try {
     const helpMessage = `
-📚 *SnapBooks Help Guide*
+📚 <b>SnapBooks Help Guide</b>
 
-*Photo Upload Instructions:*
+<b>Photo Upload Instructions:</b>
 1. Hold your phone steady over the bill
 2. Ensure good lighting (no shadows)
 3. Capture the full page clearly
 4. Avoid blurry or angled shots
 
-*What I can read:*
+<b>What I can read:</b>
 ✅ Hindi and English text
 ✅ Handwritten numbers & printed forms
 ✅ Weighbridge slips, katas, invoices
 ✅ Multiple documents in one photo
 ✅ Common abbreviations (pcs, kg, dz, ctn, MT)
 
-*Example usage:*
+<b>Example usage:</b>
 Just photograph a kata saying "Ravi ko 100 kursi @ 500" and send it to me!
 
-*Need support?*
+<b>Need support?</b>
 Contact your team administrator.
     `;
 
-    await ctx.replyWithMarkdown(helpMessage);
+    await ctx.replyWithHTML(helpMessage);
   } catch (error) {
     console.error('Error in /help handler:', error);
     ctx.reply('Failed to show help message. Please try /help again.');
@@ -81,15 +81,15 @@ Contact your team administrator.
 
 // Stub commands — graceful responses for unbuilt features
 bot.command('inventory', async (ctx) => {
-  await ctx.replyWithMarkdown('📦 *Inventory tracking coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
+  await ctx.replyWithHTML('📦 <b>Inventory tracking coming soon!</b>\n\nFor now, send a photo of your bill to generate an invoice.');
 });
 
 bot.command('ledger', async (ctx) => {
-  await ctx.replyWithMarkdown('📒 *Ledger feature coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
+  await ctx.replyWithHTML('📒 <b>Ledger feature coming soon!</b>\n\nFor now, send a photo of your bill to generate an invoice.');
 });
 
 bot.command('analytics', async (ctx) => {
-  await ctx.replyWithMarkdown('📊 *Analytics feature coming soon!*\n\nFor now, send a photo of your bill to generate an invoice.');
+  await ctx.replyWithHTML('📊 <b>Analytics feature coming soon!</b>\n\nFor now, send a photo of your bill to generate an invoice.');
 });
 
 // Photo handler - main OCR pipeline entry point
@@ -131,7 +131,8 @@ bot.on('photo', async (ctx) => {
 
     const extractedData = await extractDataFromImage(imageBuffer);
 
-    console.log('Extracted data:', JSON.stringify(extractedData, null, 2).substring(0, 500));
+    // Log safely without circular references
+    console.log('✅ Extracted', extractedData.items?.length || 0, 'items, confidence:', extractedData.confidence || 'N/A');
 
     // Delete processing message
     await ctx.telegram.deleteMessage(ctx.chat.id, processingMsg.message_id);
@@ -153,7 +154,7 @@ bot.on('photo', async (ctx) => {
     });
 
     // Send confirmation with inline keyboard
-    await ctx.replyWithMarkdown(confirmationMessage, {
+    await ctx.replyWithHTML(confirmationMessage, {
       reply_markup: {
         inline_keyboard: [
           [
@@ -188,10 +189,14 @@ bot.on('photo', async (ctx) => {
     } else if (error.message.includes('No data') || error.message.includes('No items')) {
       errorMessage += `*Issue:* Could not find bill data in this image.\n\nMake sure the photo shows a handwritten bill, weighbridge slip, or invoice.`;
     } else {
-      errorMessage += `*Error:* ${error.message}\n\nPlease try again or contact support.`;
+      // Don't expose raw error details to users - sanitize for security
+      errorMessage += `*Issue:* An unexpected error occurred while processing.\n\nPlease try again or contact support.`;
+      // Log full error for debugging
+      console.error('Full error details:', error);
     }
 
-    ctx.replyWithMarkdown(errorMessage);
+    // Send without Markdown to avoid parsing issues
+    ctx.reply(errorMessage.replace(/\*/g, ''));
   }
 });
 
@@ -253,12 +258,12 @@ bot.on('document', async (ctx) => {
   try {
     const doc = ctx.message.document;
     if (doc.mime_type === 'application/pdf' || doc.file_name?.endsWith('.pdf')) {
-      await ctx.reply('📄 PDF received! Currently I work best with *photos* of documents.\n\nPlease send a photo (camera or gallery) instead.', {
-        parse_mode: 'Markdown'
+      await ctx.reply('📄 PDF received! Currently I work best with <b>photos</b> of documents.\n\nPlease send a photo (camera or gallery) instead.', {
+        parse_mode: 'HTML'
       });
     } else {
-      await ctx.reply('📸 Please send me a *photo* of your handwritten bill.\n\nIf you need help, type /help', {
-        parse_mode: 'Markdown'
+      await ctx.reply('📸 Please send me a <b>photo</b> of your handwritten bill.\n\nIf you need help, type /help', {
+        parse_mode: 'HTML'
       });
     }
   } catch (error) {
@@ -274,8 +279,8 @@ bot.on('text', async (ctx) => {
       return;
     }
 
-    await ctx.reply('📸 Please send me a *photo* of your handwritten bill.\n\nIf you need help, type /help', {
-      parse_mode: 'Markdown'
+    await ctx.reply('📸 Please send me a <b>photo</b> of your handwritten bill.\n\nIf you need help, type /help', {
+      parse_mode: 'HTML'
     });
   } catch (error) {
     console.error('Error in text handler:', error);

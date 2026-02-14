@@ -2,6 +2,7 @@ import { extractDataFromImage } from './geminiClient.js';
 import { calculateInvoice, validateInvoice } from './gstEngine.js';
 import { generatePDF } from './pdfGenerator.js';
 import { generateTallyXML, validateTallyXML } from './tallyXml.js';
+import { saveInvoice, uploadFile } from './firebaseClient.js';
 import { writeFileSync } from 'fs';
 
 /**
@@ -15,7 +16,7 @@ import { writeFileSync } from 'fs';
  * @returns {Promise<Object>} { invoice, pdfBuffer, xmlString, metadata }
  */
 export async function processInvoicePipeline(imageBuffer, documentType = 'sales_invoice', customerState = null, options = {}) {
-  const { timeout = 30000, ocrTimeout = 25000 } = options;
+  const { timeout = 30000, ocrTimeout = 25000, userId = null, saveToFirebase = true } = options;
   const startTime = Date.now();
   const metadata = {
     documentType,
@@ -147,6 +148,49 @@ async function executePipeline(imageBuffer, documentType, customerState, metadat
 
     console.log(`✅ PDF + XML generated in parallel (${generationDuration}ms, PDF: ${pdfBuffer.length} bytes, XML: ${xmlString.length} bytes)`);
 
+    // Step 6: Save to Firebase (if enabled)
+    let pdfUrl = null;
+    let xmlUrl = null;
+
+    if (saveToFirebase) {
+      try {
+        console.log('☁️ Step 6: Uploading to Firebase...');
+        const uploadStart = Date.now();
+
+        const invoiceId = invoiceData.invoice_number.replace(/[\/\\]/g, '-');
+
+        // Upload files to Firebase Storage in parallel
+        [pdfUrl, xmlUrl] = await Promise.all([
+          uploadFile(pdfBuffer, `invoices/pdfs/${invoiceId}.pdf`, 'application/pdf'),
+          uploadFile(Buffer.from(xmlString), `invoices/xmls/${invoiceId}.xml`, 'application/xml')
+        ]);
+
+        // Save invoice metadata to Firestore
+        await saveInvoice(invoiceId, {
+          ...invoiceData,
+          pdf_url: pdfUrl,
+          xml_url: xmlUrl,
+          user_id: userId,
+          document_type: documentType,
+          extracted_data: extractedData
+        });
+
+        const uploadDuration = Date.now() - uploadStart;
+        metadata.steps.push({
+          step: 'Firebase Upload',
+          duration: uploadDuration,
+          pdfUrl,
+          xmlUrl
+        });
+
+        console.log(`✅ Uploaded to Firebase (${uploadDuration}ms)`);
+      } catch (error) {
+        console.error('⚠️ Firebase upload failed:', error.message);
+        // Don't fail the pipeline if Firebase fails - just log it
+        metadata.firebaseError = error.message;
+      }
+    }
+
     // Complete metadata
     metadata.totalDuration = Date.now() - startTime;
     metadata.endTime = new Date().toISOString();
@@ -165,6 +209,8 @@ async function executePipeline(imageBuffer, documentType, customerState, metadat
       extractedData,
       pdfBuffer,
       xmlString,
+      pdfUrl,
+      xmlUrl,
       metadata
     };
 

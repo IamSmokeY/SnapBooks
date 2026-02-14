@@ -240,7 +240,10 @@ bot.on('callback_query', async (ctx) => {
     await ctx.reply(`⚡ Generating ${docConfig.label}...`);
 
     // Run pipeline with the extracted data (skip re-OCR)
-    const result = await processInvoicePipeline(session.imageBuffer, docConfig.type);
+    const result = await processInvoicePipeline(session.imageBuffer, docConfig.type, null, {
+      userId: userId.toString(),
+      saveToFirebase: true
+    });
     await sendResultsToTelegram(ctx, result);
 
     // Clear session

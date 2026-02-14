@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/bot.js",
+    "api": "node src/api.js",
     "dev": "node --watch src/bot.js",
     "api": "node src/api.js",
     "seed": "node scripts/seed.js",

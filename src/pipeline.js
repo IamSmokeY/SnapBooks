@@ -6,16 +6,6 @@ import { saveInvoice, uploadFile } from './firebaseClient.js';
 import { writeFileSync } from 'fs';
 
 /**
- * Escape special Telegram Markdown characters in user-supplied text
- * @param {string} text
- * @returns {string} Escaped text safe for Telegram Markdown
- */
-function escapeMarkdown(text) {
-  if (!text || typeof text !== 'string') return text || '';
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-}
-
-/**
  * Complete pipeline: Image → OCR → GST → PDF + XML
  * @param {Buffer} imageBuffer - Image buffer from Telegram
  * @param {string} documentType - 'sales_invoice', 'purchase_order', 'delivery_challan'
@@ -27,7 +17,7 @@ function escapeMarkdown(text) {
  * @returns {Promise<Object>} { invoice, pdfBuffer, xmlString, metadata }
  */
 export async function processInvoicePipeline(imageBuffer, documentType = 'sales_invoice', customerState = null, options = {}) {
-  const { timeout = 30000, ocrTimeout = 25000, userId = null, saveToFirebase = true } = options;
+  const { timeout = 30000, ocrTimeout = 25000, userId = null, saveToFirebase = false } = options;
   const startTime = Date.now();
   const metadata = {
     documentType,
@@ -40,7 +30,7 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
   try {
     // Wrap entire pipeline in timeout
     return await Promise.race([
-      executePipeline(imageBuffer, documentType, customerState, metadata, { ocrTimeout, extractedData: options.extractedData }),
+      executePipeline(imageBuffer, documentType, customerState, metadata, { ocrTimeout, extractedData: options.extractedData, userId, saveToFirebase }),
       new Promise((_, reject) =>
         setTimeout(() => {
           const elapsed = Date.now() - startTime;
@@ -69,7 +59,7 @@ export async function processInvoicePipeline(imageBuffer, documentType = 'sales_
  * @private
  */
 async function executePipeline(imageBuffer, documentType, customerState, metadata, options) {
-  const { ocrTimeout, extractedData: preExtracted } = options;
+  const { ocrTimeout, extractedData: preExtracted, userId = null, saveToFirebase = false } = options;
   const startTime = Date.now();
 
   try {
@@ -296,6 +286,16 @@ export function savePipelineOutputs(result, outputPrefix = 'output') {
 }
 
 /**
+ * Escape special HTML characters in user-supplied text
+ * @param {string} text
+ * @returns {string} Escaped text safe for Telegram HTML
+ */
+function escapeHTML(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
  * Send results to Telegram
  * @param {Object} ctx - Telegraf context
  * @param {Object} result - Pipeline result
@@ -303,39 +303,42 @@ export function savePipelineOutputs(result, outputPrefix = 'output') {
  */
 export async function sendResultsToTelegram(ctx, result) {
   if (!result.success) {
-    await ctx.replyWithMarkdown(
-      `❌ *Processing Failed*\n\n${result.error}\n\nPlease try again with a clearer photo.`
+    await ctx.replyWithHTML(
+      `❌ <b>Processing Failed</b>\n\n${escapeHTML(result.error)}\n\nPlease try again with a clearer photo.`
     );
     return;
   }
 
   const invoice = result.invoice;
 
-  // Success message
-  const gstRates = [...new Set(invoice.items.map(i => i.gst_rate))];
-  const gstRateLabel = gstRates.length === 1 ? `${gstRates[0]}` : 'Mixed';
+  // Build item lines
+  const itemLines = invoice.items.map((item, i) =>
+    `${i + 1}. ${escapeHTML(item.name)} — ${item.quantity} ${item.unit} @ ₹${item.rate} (${item.gst_rate}% GST)`
+  ).join('\n');
 
-  const message = `
-✅ *Invoice ${invoice.invoice_number || 'N/A'} Created!*
+  // Tax breakdown
+  const taxBreakdown = invoice.tax_type === 'intrastate'
+    ? `📊 <b>CGST:</b> ₹${invoice.cgst.toLocaleString('en-IN')}\n📊 <b>SGST:</b> ₹${invoice.sgst.toLocaleString('en-IN')}`
+    : `📊 <b>IGST:</b> ₹${invoice.igst.toLocaleString('en-IN')}`;
 
-👤 *Customer:* ${escapeMarkdown(invoice.customer_name)}
-📅 *Date:* ${invoice.date}
-📍 *Tax Type:* ${invoice.tax_type.toUpperCase()}
+  const message = [
+    `✅ <b>Invoice ${escapeHTML(invoice.invoice_number || 'N/A')} Created!</b>`,
+    '',
+    `👤 <b>Customer:</b> ${escapeHTML(invoice.customer_name)}`,
+    `📅 <b>Date:</b> ${invoice.date}`,
+    `📍 <b>Tax Type:</b> ${invoice.tax_type.toUpperCase()}`,
+    '',
+    `<b>Items:</b> ${invoice.items.length}`,
+    itemLines,
+    '',
+    `💰 <b>Subtotal:</b> ₹${invoice.subtotal.toLocaleString('en-IN')}`,
+    taxBreakdown,
+    `💵 <b>Grand Total:</b> ₹${invoice.grand_total.toLocaleString('en-IN')}`,
+    '',
+    `⏱️ <b>Processing Time:</b> ${result.metadata.totalDuration}ms`
+  ].join('\n');
 
-*Items:* ${invoice.items.length}
-${invoice.items.map((item, i) => `${i + 1}. ${escapeMarkdown(item.name)} - ${item.quantity} ${item.unit} @ ₹${item.rate} (${item.gst_rate}% GST)`).join('\n')}
-
-💰 *Subtotal:* ₹${invoice.subtotal.toLocaleString('en-IN')}
-${invoice.tax_type === 'intrastate' ?
-  `📊 *CGST:* ₹${invoice.cgst.toLocaleString('en-IN')}\n📊 *SGST:* ₹${invoice.sgst.toLocaleString('en-IN')}` :
-  `📊 *IGST:* ₹${invoice.igst.toLocaleString('en-IN')}`
-}
-💵 *Grand Total:* ₹${invoice.grand_total.toLocaleString('en-IN')}
-
-⏱️ *Processing Time:* ${result.metadata.totalDuration}ms
-  `.trim();
-
-  await ctx.replyWithMarkdown(message);
+  await ctx.replyWithHTML(message);
 
   // Send PDF
   await ctx.replyWithDocument(

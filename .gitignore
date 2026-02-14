@@ -147,6 +147,18 @@ node_modules/
 *.tgz
 .env
 
+# Test outputs & generated files
+test-invoice-*.pdf
+test-invoice-*.html
+*.pdf
+!templates/**
+!frontend/templates/**
+
+# Uploaded images/docs (should not be in repo)
+*.jpeg
+*.jpg
+*.png
+
 # Environments
 .env
 .envrc

@@ -8,6 +8,18 @@ dotenv.config();
 
 // Session storage for user data (in production, use Redis or database)
 const userSessions = new Map();
+const SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Periodically clean up stale sessions to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, session] of userSessions) {
+    if (now - session.timestamp > SESSION_TTL_MS) {
+      userSessions.delete(userId);
+      console.log(`🧹 Cleaned up stale session for user ${userId}`);
+    }
+  }
+}, 60 * 1000); // Check every minute
 
 // Initialize bot
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);

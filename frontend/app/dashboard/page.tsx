@@ -44,15 +44,15 @@ export default function DashboardPage() {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          <NavItem active icon="📊" label="Dashboard" />
-          <NavItem icon="📄" label="Invoices" />
-          <NavItem icon="🚛" label="Vehicles" />
-          <NavItem icon="👥" label="Customers" />
-          <NavItem icon="📈" label="Reports" />
+          <NavItem active icon="📊" label="Dashboard" href="/dashboard" />
+          <NavItem icon="📄" label="Invoices" href="/invoices" />
+          <NavItem icon="🚛" label="Vehicles" href="/vehicles" />
+          <NavItem icon="👥" label="Customers" href="/customers" />
+          <NavItem icon="📈" label="Reports" href="/reports" />
         </nav>
 
         <div className="p-4 border-t border-[#38383A]">
-          <NavItem icon="⚙️" label="Settings" />
+          <NavItem icon="⚙️" label="Settings" href="/settings" />
           <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-[#0A84FF]/20 to-[#0A84FF]/5 border border-[#0A84FF]/20">
             <p className="text-xs font-semibold text-[#0A84FF] mb-1">Pro Plan Active</p>
             <p className="text-[10px] text-[#86868B]">Next billing: Mar 1, 2026</p>
@@ -63,25 +63,27 @@ export default function DashboardPage() {
       {/* Main Content Area */}
       <main className="md:ml-64 min-h-screen relative">
         {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-[#38383A] px-8 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Good Afternoon, <span className="bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent">Raj</span></h2>
-            <p className="text-sm text-[#86868B] mt-1">Friday, 14 February 2026 • <span className="text-[#30D158]">●</span> All Systems Operational</p>
-          </div>
-          <div className="flex items-center gap-4">
-             <button className="bg-[#1C1C1E] border border-[#38383A] rounded-full p-2 text-[#86868B] hover:text-white hover:border-[#86868B] transition-all">
-               <span className="sr-only">Search</span>
-               🔍
-             </button>
-             <button className="bg-[#1C1C1E] border border-[#38383A] rounded-full p-2 text-[#86868B] hover:text-white hover:border-[#86868B] transition-all relative">
-               <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#FF3B30] border-2 border-[#1C1C1E] rounded-full"></span>
-               🔔
-             </button>
-             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0A84FF] to-[#5E5CE6] border-2 border-[#1C1C1E]"></div>
+        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-[#38383A]">
+          <div className="px-6 md:px-8 py-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Good Afternoon, <span className="bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent">Raj</span></h2>
+              <p className="text-sm text-[#86868B] mt-1">Friday, 14 February 2026 • <span className="text-[#30D158]">●</span> All Systems Operational</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <button className="bg-[#1C1C1E] border border-[#38383A] rounded-full p-2 text-[#86868B] hover:text-white hover:border-[#86868B] transition-all">
+                <span className="sr-only">Search</span>
+                🔍
+              </button>
+              <button className="bg-[#1C1C1E] border border-[#38383A] rounded-full p-2 text-[#86868B] hover:text-white hover:border-[#86868B] transition-all relative">
+                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#FF3B30] border-2 border-[#1C1C1E] rounded-full"></span>
+                🔔
+              </button>
+              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0A84FF] to-[#5E5CE6] border-2 border-[#1C1C1E]"></div>
+            </div>
           </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="px-6 md:px-8 py-8 space-y-8">
           
           {/* Quick Actions */}
           <div className="flex justify-between items-end">
@@ -224,9 +226,9 @@ export default function DashboardPage() {
   );
 }
 
-function NavItem({ icon, label, active = false }: { icon: string; label: string; active?: boolean }) {
+function NavItem({ icon, label, href, active = false }: { icon: string; label: string; href: string; active?: boolean }) {
   return (
-    <div className={`
+    <Link href={href} className={`
       flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer mb-1
       ${active 
         ? 'bg-[#0A84FF] text-white shadow-lg shadow-[#0A84FF]/20' 
@@ -235,6 +237,6 @@ function NavItem({ icon, label, active = false }: { icon: string; label: string;
     `}>
       <span className="text-lg">{icon}</span>
       <span>{label}</span>
-    </div>
+    </Link>
   );
 }

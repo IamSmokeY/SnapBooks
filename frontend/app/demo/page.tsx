@@ -133,7 +133,13 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#0A84FF] selection:text-white">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-[#0A84FF] selection:text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#0A84FF] rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#30D158] rounded-full blur-[120px] animate-pulse" style={{animationDelay: '1s'}}></div>
+      </div>
+      
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-2xl bg-black/60 border-b border-[#38383A]">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -155,32 +161,42 @@ export default function DemoPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-4 border-b border-[#38383A]">
+          <div className="flex gap-3 mt-6">
             <button
               onClick={() => setView('companies')}
-              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors relative ${
+              className={`group relative px-6 py-3 text-sm font-bold transition-all duration-300 rounded-xl ${
                 view === 'companies'
-                  ? 'text-[#0A84FF]'
+                  ? 'text-white'
                   : 'text-[#86868B] hover:text-white'
               }`}
             >
-              Companies & Invoices
               {view === 'companies' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0A84FF]"></div>
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A84FF] to-[#30D158] rounded-xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A84FF] to-[#30D158] rounded-xl blur opacity-50"></div>
+                </>
               )}
+              <span className="relative flex items-center gap-2">
+                <span>🏭</span> Companies & Invoices
+              </span>
             </button>
             <button
               onClick={() => setView('bot-simulation')}
-              className={`px-4 py-2 -mb-px text-sm font-medium transition-colors relative ${
+              className={`group relative px-6 py-3 text-sm font-bold transition-all duration-300 rounded-xl ${
                 view === 'bot-simulation'
-                  ? 'text-[#0A84FF]'
+                  ? 'text-white'
                   : 'text-[#86868B] hover:text-white'
               }`}
             >
-              Bot Simulation
               {view === 'bot-simulation' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0A84FF]"></div>
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A84FF] to-[#30D158] rounded-xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0A84FF] to-[#30D158] rounded-xl blur opacity-50"></div>
+                </>
               )}
+              <span className="relative flex items-center gap-2">
+                <span>🤖</span> Bot Simulation
+              </span>
             </button>
           </div>
         </div>
@@ -227,19 +243,38 @@ function CompaniesView({
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-4xl font-bold tracking-tight mb-4">
-          {company ? company.name : 'Company Dashboard'}
-        </h2>
-        <p className="text-[#86868B] text-lg leading-relaxed">
-          {company ? `Manage invoices for ${company.name}` : 'View all companies and their weighbridge invoices'}
-        </p>
-        {company && (
-          <button
-            onClick={() => setSelectedCompany(null)}
-            className="mt-4 text-sm text-[#0A84FF] hover:underline flex items-center gap-1"
-          >
-            ← Back to all companies
-          </button>
+        {company ? (
+          <>
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() => setSelectedCompany(null)}
+                className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C1C1E] border border-[#38383A] hover:border-[#0A84FF] transition-all text-[#86868B] hover:text-white"
+              >
+                <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                Back
+              </button>
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0A84FF] to-[#30D158] flex items-center justify-center text-3xl font-bold shadow-lg shadow-[#0A84FF]/20">
+                {company.name.charAt(0)}
+              </div>
+              <div>
+                <h2 className="text-4xl font-bold tracking-tight">
+                  {company.name}
+                </h2>
+                <p className="text-lg text-[#86868B] mt-1">
+                  📍 {company.location} • 🔖 {company.gstin}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-5xl font-bold tracking-tight mb-4">
+              Company <span className="bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent">Dashboard</span>
+            </h2>
+            <p className="text-xl text-[#86868B] leading-relaxed">
+              Manage multiple companies and their weighbridge invoices in one place
+            </p>
+          </>
         )}
       </div>
 
@@ -247,111 +282,138 @@ function CompaniesView({
       {!company ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {companies.map((comp) => (
-            <button
-              key={comp.id}
+                      <div key={comp.id}
               onClick={() => setSelectedCompany(comp.id)}
-              className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl hover:border-[#0A84FF] transition-all text-left group"
+              className="group relative glass-panel p-8 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border-2 border-[#38383A] rounded-3xl hover:border-[#0A84FF] transition-all duration-500 cursor-pointer overflow-hidden"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] flex items-center justify-center text-xl font-bold">
-                  {comp.name.charAt(0)}
-                </div>
-                <div className="text-xs text-[#86868B] bg-[#2C2C2E] px-2 py-1 rounded">
-                  {comp.totalInvoices} invoices
-                </div>
-              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full group-hover:scale-110 transition-transform"></div>
               
-              <h3 className="font-semibold text-white text-lg mb-2 group-hover:text-[#0A84FF] transition-colors">
-                {comp.name}
-              </h3>
-              
-              <div className="space-y-1 text-sm text-[#86868B] mb-4">
-                <div className="flex items-center gap-2">
-                  <span>📍</span>
-                  <span>{comp.location}</span>
+              <div className="relative">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] flex items-center justify-center text-2xl font-bold group-hover:scale-110 transition-transform shadow-lg">
+                    {comp.name.charAt(0)}
+                  </div>
+                  <div className="text-xs font-bold text-[#0A84FF] bg-[#0A84FF]/10 px-3 py-1.5 rounded-full border border-[#0A84FF]/30">
+                    {comp.totalInvoices} invoices
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span>🔖</span>
-                  <span className="font-mono text-xs">{comp.gstin}</span>
+                
+                <h3 className="font-bold text-white text-2xl mb-4 group-hover:text-[#0A84FF] transition-colors">
+                  {comp.name}
+                </h3>
+                
+                <div className="space-y-2 text-sm text-[#86868B] mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📍</span>
+                    <span>{comp.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔖</span>
+                    <span className="font-mono text-xs">{comp.gstin}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="pt-4 border-t border-[#38383A]">
-                <div className="text-2xl font-bold text-white">
-                  ₹{(comp.totalRevenue / 1000).toFixed(1)}K
+                <div className="pt-6 border-t border-[#38383A] flex items-end justify-between">
+                  <div>
+                    <div className="text-4xl font-bold bg-gradient-to-r from-[#30D158] to-[#0A84FF] bg-clip-text text-transparent">
+                      ₹{(comp.totalRevenue / 1000).toFixed(1)}K
+                    </div>
+                    <div className="text-xs text-[#86868B] uppercase tracking-wider mt-1">Total Revenue</div>
+                  </div>
+                  <div className="text-[#0A84FF] group-hover:translate-x-2 transition-transform text-2xl">
+                    →
+                  </div>
                 </div>
-                <div className="text-xs text-[#86868B]">Total Revenue</div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Company Stats */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
-              <div className="text-3xl font-bold text-white mb-1">
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="glass-panel p-8 bg-gradient-to-br from-[#0A84FF]/20 to-[#0A84FF]/5 border-2 border-[#38383A] hover:border-[#0A84FF] transition-all rounded-3xl group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-[#0A84FF]/20 text-3xl group-hover:scale-110 transition-transform">
+                  📄
+                </div>
+              </div>
+              <div className="text-5xl font-bold text-[#0A84FF] mb-2">
                 {company.invoices.length}
               </div>
-              <div className="text-sm text-[#86868B]">Total Invoices</div>
+              <div className="text-sm text-[#86868B] uppercase tracking-wider">Total Invoices</div>
             </div>
-            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
-              <div className="text-3xl font-bold text-[#30D158] mb-1">
+            <div className="glass-panel p-8 bg-gradient-to-br from-[#30D158]/20 to-[#30D158]/5 border-2 border-[#38383A] hover:border-[#30D158] transition-all rounded-3xl group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-[#30D158]/20 text-3xl group-hover:scale-110 transition-transform">
+                  💰
+                </div>
+              </div>
+              <div className="text-5xl font-bold text-[#30D158] mb-2">
                 ₹{(company.invoices.reduce((sum, inv) => sum + inv.amount, 0) / 1000).toFixed(1)}K
               </div>
-              <div className="text-sm text-[#86868B]">Total Amount</div>
+              <div className="text-sm text-[#86868B] uppercase tracking-wider">Total Amount</div>
             </div>
-            <div className="glass-panel p-6 bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl">
-              <div className="text-3xl font-bold text-[#0A84FF] mb-1">
+            <div className="glass-panel p-8 bg-gradient-to-br from-[#0A84FF]/20 to-[#30D158]/20 border-2 border-[#38383A] hover:border-[#0A84FF] transition-all rounded-3xl group">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-2xl bg-[#30D158]/20 text-3xl group-hover:scale-110 transition-transform">
+                  ✓
+                </div>
+              </div>
+              <div className="text-5xl font-bold bg-gradient-to-r from-[#0A84FF] to-[#30D158] bg-clip-text text-transparent mb-2">
                 {company.invoices.filter(i => i.status === 'paid').length}
               </div>
-              <div className="text-sm text-[#86868B]">Paid Invoices</div>
+              <div className="text-sm text-[#86868B] uppercase tracking-wider">Paid Invoices</div>
             </div>
           </div>
 
           {/* Invoices Table */}
-          <div className="glass-panel bg-[#1C1C1E]/50 border border-[#38383A] rounded-2xl overflow-hidden">
+          <div className="glass-panel bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border-2 border-[#38383A] rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-[#38383A] bg-[#1C1C1E]/50">
+              <h3 className="text-2xl font-bold">Invoice History</h3>
+              <p className="text-sm text-[#86868B] mt-1">All transactions for this company</p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#38383A]">
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Invoice</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Vehicle</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-[#86868B] uppercase tracking-wider">Material</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-[#86868B] uppercase tracking-wider">Net Weight</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-[#86868B] uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-[#86868B] uppercase tracking-wider">Status</th>
+                  <tr className="border-b border-[#38383A] bg-[#1C1C1E]/30">
+                    <th className="px-8 py-5 text-left text-xs font-bold text-[#86868B] uppercase tracking-wider">Invoice</th>
+                    <th className="px-8 py-5 text-left text-xs font-bold text-[#86868B] uppercase tracking-wider">Date</th>
+                    <th className="px-8 py-5 text-left text-xs font-bold text-[#86868B] uppercase tracking-wider">Vehicle</th>
+                    <th className="px-8 py-5 text-left text-xs font-bold text-[#86868B] uppercase tracking-wider">Material</th>
+                    <th className="px-8 py-5 text-right text-xs font-bold text-[#86868B] uppercase tracking-wider">Net Weight</th>
+                    <th className="px-8 py-5 text-right text-xs font-bold text-[#86868B] uppercase tracking-wider">Amount</th>
+                    <th className="px-8 py-5 text-center text-xs font-bold text-[#86868B] uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#38383A]">
+                <tbody className="divide-y divide-[#38383A]/50">
                   {company.invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-[#2C2C2E]/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{invoice.invoiceNo}</div>
+                    <tr key={invoice.id} className="hover:bg-[#1C1C1E]/30 transition-colors group">
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <div className="text-sm font-bold text-white group-hover:text-[#0A84FF] transition-colors">{invoice.invoiceNo}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-8 py-5 whitespace-nowrap">
                         <div className="text-sm text-[#86868B]">{invoice.date}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-white">{invoice.vehicleNo}</div>
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <div className="text-sm font-mono font-bold text-white">{invoice.vehicleNo}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-8 py-5 whitespace-nowrap">
                         <div className="text-sm text-[#86868B]">{invoice.material}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm text-white">{(invoice.netWeight / 1000).toFixed(1)} MT</div>
+                      <td className="px-8 py-5 whitespace-nowrap text-right">
+                        <div className="text-sm font-semibold text-white">{(invoice.netWeight / 1000).toFixed(1)} MT</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-semibold text-white">₹{invoice.amount.toLocaleString()}</div>
+                      <td className="px-8 py-5 whitespace-nowrap text-right">
+                        <div className="text-base font-bold text-white">₹{invoice.amount.toLocaleString()}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      <td className="px-8 py-5 whitespace-nowrap text-center">
+                        <span className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-full ${
                           invoice.status === 'paid' 
-                            ? 'bg-[#30D158]/10 text-[#30D158]' 
+                            ? 'bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30' 
                             : invoice.status === 'pending'
-                            ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
-                            : 'bg-[#FF453A]/10 text-[#FF453A]'
+                            ? 'bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/30'
+                            : 'bg-[#FF453A]/20 text-[#FF453A] border border-[#FF453A]/30'
                         }`}>
                           {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                         </span>

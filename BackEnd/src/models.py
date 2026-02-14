@@ -102,6 +102,20 @@ class ChatHistory(BaseModel):
         )
 
 
+# ── Contact models ───────────────────────────────────────────────────────────
+
+
+class Contact(BaseModel):
+    contact_id: str = ""
+    name: str = Field(..., description="Company/person name")
+    address: str | None = Field(None, description="Full address")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="State")
+    gstin: str | None = Field(None, description="GSTIN number")
+    phone: str | None = Field(None, description="Phone number")
+    email: str | None = Field(None, description="Email address")
+
+
 # ── Invoice models ───────────────────────────────────────────────────────────
 
 

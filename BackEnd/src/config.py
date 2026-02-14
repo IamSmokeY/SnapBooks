@@ -26,3 +26,8 @@ SYSTEM_PROMPT_PATH = str(PROJECT_DIR / "agent" / "Agent.md")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 TELEGRAM_FILE_API = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}"
+
+# Firebase — service account JSON path (relative to BACKEND_DIR or absolute)
+FIREBASE_SERVICE_ACCOUNT = get_env("FIREBASE_SERVICE_ACCOUNT")
+if FIREBASE_SERVICE_ACCOUNT and not Path(FIREBASE_SERVICE_ACCOUNT).is_absolute():
+    FIREBASE_SERVICE_ACCOUNT = str(BACKEND_DIR / FIREBASE_SERVICE_ACCOUNT)

@@ -127,6 +127,19 @@ async def send_typing(chat_id: int):
         )
 
 
+async def keep_typing(chat_id: int, stop_event: asyncio.Event):
+    """Send typing indicator every 4s until stop_event is set."""
+    while not stop_event.is_set():
+        try:
+            await send_typing(chat_id)
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=4)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def send_document(chat_id: int, file_path: str, caption: str = "") -> dict:
     async with httpx.AsyncClient(timeout=30.0) as client:
         with open(file_path, "rb") as f:
@@ -249,18 +262,21 @@ async def telegram_webhook(request: Request):
 
 async def _process_text(chat_id: int, telegram_chat_id: str, text: str):
     """Process text message through agent pipeline in background."""
+    stop_typing = asyncio.Event()
+    typing_task = asyncio.create_task(keep_typing(chat_id, stop_typing))
     try:
-        await send_typing(chat_id)
-
         active_chat_id = await get_active_chat_id(telegram_chat_id)
-        chat_history = await get_chat_history(active_chat_id)
+        chat_history = await get_chat_history(active_chat_id, telegram_chat_id)
         chat_history.append_message(text)
 
         log("agent_start", chat_id=active_chat_id, telegram_chat_id=telegram_chat_id, input_type="text")
         chat_history = await agent.generate_response(chat_history)
         log("agent_complete", chat_id=active_chat_id, cost=chat_history.cost, api_calls=len(chat_history.api_calls))
 
-        await save_chat_history(chat_history)
+        stop_typing.set()
+        await typing_task
+
+        await save_chat_history(chat_history, telegram_chat_id)
 
         text_response = extract_response_text(chat_history)
         formatted = format_for_telegram(text_response)
@@ -272,18 +288,22 @@ async def _process_text(chat_id: int, telegram_chat_id: str, text: str):
             log("invoice_sent", telegram_chat_id=telegram_chat_id, path=invoice_path)
             await send_document(chat_id, invoice_path, caption="📄 Your invoice")
     except Exception as e:
+        stop_typing.set()
+        await typing_task
         log("background_text_error", telegram_chat_id=telegram_chat_id, error=str(e))
         await send_message(chat_id, "❌ Something went wrong processing your message. Please try again.")
 
 
 async def _process_photo(chat_id: int, telegram_chat_id: str, photo: PhotoSize, caption: str | None):
     """Process photo through agent pipeline in background."""
+    stop_typing = asyncio.Event()
+    typing_task = asyncio.create_task(keep_typing(chat_id, stop_typing))
     try:
-        await send_typing(chat_id)
-
         result = await download_photo_bytes(photo.file_id)
         if not result:
             log("photo_download_failed", telegram_chat_id=telegram_chat_id, file_id=photo.file_id)
+            stop_typing.set()
+            await typing_task
             await send_message(chat_id, "❌ Failed to download the image.")
             return
 
@@ -291,7 +311,7 @@ async def _process_photo(chat_id: int, telegram_chat_id: str, photo: PhotoSize, 
         log("photo_downloaded", telegram_chat_id=telegram_chat_id, mime_type=mime_type, size_bytes=len(image_bytes))
 
         active_chat_id = await get_active_chat_id(telegram_chat_id)
-        chat_history = await get_chat_history(active_chat_id)
+        chat_history = await get_chat_history(active_chat_id, telegram_chat_id)
 
         parts = [Part.from_bytes(data=image_bytes, mime_type=mime_type)]
         caption_text = caption or "Process this bill and generate an invoice."
@@ -304,7 +324,10 @@ async def _process_photo(chat_id: int, telegram_chat_id: str, photo: PhotoSize, 
         chat_history = await agent.generate_response(chat_history)
         log("agent_complete", chat_id=active_chat_id, cost=chat_history.cost, api_calls=len(chat_history.api_calls))
 
-        await save_chat_history(chat_history)
+        stop_typing.set()
+        await typing_task
+
+        await save_chat_history(chat_history, telegram_chat_id)
 
         text_response = extract_response_text(chat_history)
         formatted = format_for_telegram(text_response)
@@ -315,5 +338,7 @@ async def _process_photo(chat_id: int, telegram_chat_id: str, photo: PhotoSize, 
             log("invoice_sent", telegram_chat_id=telegram_chat_id, path=invoice_path)
             await send_document(chat_id, invoice_path, caption="📄 Your invoice")
     except Exception as e:
+        stop_typing.set()
+        await typing_task
         log("background_photo_error", telegram_chat_id=telegram_chat_id, error=str(e))
         await send_message(chat_id, "❌ Something went wrong processing your bill. Please try again.")

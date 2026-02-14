@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from src.config import MAX_API_CALLS, SYSTEM_PROMPT_PATH
 from src.logger import log
 from src.models import ChatHistory, GeminiModel, Role, ToolResponse
+from src.agent.tools.contacts import lookup_contacts
 from src.agent.tools.generate_invoice import generate_invoice_pdf
 from src.agent.tools.google_search_agent import google_search_agent
 
@@ -84,6 +85,7 @@ class Tools:
         self.tool_funcs: list[Callable] = [
             generate_invoice_pdf,
             google_search_agent,
+            lookup_contacts,
         ]
         self.callable_map = {func.__name__: func for func in self.tool_funcs}
 
